@@ -117,19 +117,35 @@ _load_css("app.css")
 
 # RESTORE LOGIN KHI RELOAD
 params = st.experimental_get_query_params()
-
-# user/name chỉ lưu trong session_state, không để lộ trên URL
-user   = st.session_state.get("user")  or params.get("user", [None])[0]
-name   = st.session_state.get("username") or params.get("name", [None])[0]
 page   = params.get("page", ["home"])[0]
 
-# Nếu đang có user/name trên URL → dọn sạch, chuyển vào session_state
+# Nếu đang có user/name trên URL (link cũ) → dọn sạch, chuyển vào session_state
 if params.get("user") or params.get("name"):
-    if user:
-        st.session_state["user"]     = user
-        st.session_state["username"] = name or user.split("@")[0]
+    _u = params.get("user", [None])[0]
+    _n = params.get("name", [None])[0]
+    if _u:
+        st.session_state["user"]     = _u
+        st.session_state["username"] = _n or _u.split("@")[0]
     st.experimental_set_query_params(page=page)
     st.experimental_rerun()
+
+# Restore session từ localStorage (giữ login sau khi server restart)
+if "user" not in st.session_state:
+    _stored = st_javascript(
+        "JSON.stringify({u:localStorage.getItem('nom_u'),n:localStorage.getItem('nom_n'),r:localStorage.getItem('nom_r')})"
+    )
+    if isinstance(_stored, str):
+        try:
+            _d = json.loads(_stored)
+            if _d.get("u"):
+                st.session_state["user"]     = _d["u"]
+                st.session_state["username"] = _d.get("n") or _d["u"].split("@")[0]
+                st.session_state["role"]     = _d.get("r", "user")
+        except Exception:
+            pass
+
+user = st.session_state.get("user")
+name = st.session_state.get("username")
 action = params.get("action",    [None])[0]
 act_id = params.get("action_id", [None])[0]
 
@@ -279,6 +295,7 @@ with st.sidebar:
     # 9. Đăng xuất / Đăng nhập
     if _logged_in:
         if st.button("🚪 Đăng xuất", key="nav_logout"):
+            st_javascript("localStorage.removeItem('nom_u');localStorage.removeItem('nom_n');localStorage.removeItem('nom_r');0")
             st.session_state.clear()
             st.session_state["app_initialized"] = True
             st.session_state["page"] = "login"

@@ -124,6 +124,16 @@ def show():
                     st.session_state["need_sync_local"]  = True
                     st.session_state["_fb_verified"]     = True
 
+                    # Lưu vào localStorage để restore sau khi server restart
+                    _eu = user["email"].replace("'", "\\'")
+                    _en = name.replace("'", "\\'")
+                    st_javascript(
+                        f"localStorage.setItem('nom_u','{_eu}');"
+                        f"localStorage.setItem('nom_n','{_en}');"
+                        f"localStorage.setItem('nom_r','{role}');"
+                        f"0"
+                    )
+
                     st.experimental_set_query_params(page="home")
                     st.session_state["page"] = "home"
                     st.experimental_rerun()
