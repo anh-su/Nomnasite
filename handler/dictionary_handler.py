@@ -23,7 +23,7 @@ def _get_translations():
         cursor.execute("SELECT vietnamese, han_nom FROM translations")
         rows = cursor.fetchall()
         conn.close()
-        _translations_cache = sorted(rows, key=lambda x: len(x[0]), reverse=True)
+        _translations_cache = sorted(rows, key=lambda x: len(x[0]) if x[0] else 0, reverse=True)
     return _translations_cache
 
 
