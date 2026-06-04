@@ -2,8 +2,10 @@ import os
 import sys
 import types
 
-# pyrebase4 phụ thuộc vào 'gcloud' cổ (2016) không tương thích uv/modern pip
-# → mock trước khi pyrebase được import bất kỳ đâu
+# pyrebase4 phụ thuộc nhiều package Google App Engine cổ không tương thích cloud
+# → mock tất cả trước khi pyrebase được import bất kỳ đâu
+
+# 1. Mock gcloud (2016, deprecated)
 try:
     import gcloud as _gcloud_test  # noqa
 except Exception:
@@ -15,6 +17,18 @@ except Exception:
     _gcloud_mod.storage = _storage_mod
     sys.modules['gcloud'] = _gcloud_mod
     sys.modules['gcloud.storage'] = _storage_mod
+
+# 2. Mock requests_toolbelt GAE modules (requires App Engine SDK)
+_gaecontrib = types.ModuleType('requests_toolbelt._compat.gaecontrib')
+sys.modules['requests_toolbelt._compat.gaecontrib'] = _gaecontrib
+
+_rtb_appengine = types.ModuleType('requests_toolbelt.adapters.appengine')
+_rtb_appengine.is_appengine_sandbox = lambda: False
+_rtb_appengine.is_appengine = lambda: False
+class _FakeAppEngineAdapter:
+    def __init__(self, *a, **kw): pass
+_rtb_appengine.AppEngineAdapter = _FakeAppEngineAdapter
+sys.modules['requests_toolbelt.adapters.appengine'] = _rtb_appengine
 
 import streamlit as st
 st.set_page_config(
