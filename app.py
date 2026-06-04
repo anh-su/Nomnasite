@@ -23,7 +23,6 @@ _han_nom_input = components.declare_component(
     path=str(Path(__file__).parent / "components" / "han_nom_input")
 )
 from streamlit_javascript import st_javascript
-from st_keyup import st_keyup
 from services.translation_log import create_table as _create_log_table, save_entry, get_entries, get_entry_by_id, sync_from_local, delete_entry, toggle_star
 _create_log_table()
 from page import admin as admin_page          # cần sớm để check _is_admin() trong sidebar
