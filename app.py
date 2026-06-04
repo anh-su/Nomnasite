@@ -115,9 +115,18 @@ _load_css("app.css")
 # RESTORE LOGIN KHI RELOAD
 params = st.experimental_get_query_params()
 
-user   = params.get("user",      [None])[0]
-name   = params.get("name",      [None])[0]
-page   = params.get("page",      ["home"])[0]
+# user/name chỉ lưu trong session_state, không để lộ trên URL
+user   = st.session_state.get("user")  or params.get("user", [None])[0]
+name   = st.session_state.get("username") or params.get("name", [None])[0]
+page   = params.get("page", ["home"])[0]
+
+# Nếu đang có user/name trên URL → dọn sạch, chuyển vào session_state
+if params.get("user") or params.get("name"):
+    if user:
+        st.session_state["user"]     = user
+        st.session_state["username"] = name or user.split("@")[0]
+    st.experimental_set_query_params(page=page)
+    st.experimental_rerun()
 action = params.get("action",    [None])[0]
 act_id = params.get("action_id", [None])[0]
 
@@ -230,11 +239,7 @@ def _nav(key, label, page_key=None):
     if st.button(label, key=f"nav_{key}"):
         st.session_state["page"] = target
         if "username" in st.session_state:
-            st.experimental_set_query_params(
-                user=st.session_state["user"],
-                name=st.session_state["username"],
-                page=target,
-            )
+            st.experimental_set_query_params(page=target)
         else:
             st.experimental_set_query_params(page=target)
         st.experimental_rerun()

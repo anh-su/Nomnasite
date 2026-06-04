@@ -124,9 +124,7 @@ def show():
                     st.session_state["need_sync_local"]  = True
                     st.session_state["_fb_verified"]     = True
 
-                    st.experimental_set_query_params(
-                        user=user["email"], name=name, page="home"
-                    )
+                    st.experimental_set_query_params(page="home")
                     st.session_state["page"] = "home"
                     st.experimental_rerun()
 

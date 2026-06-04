@@ -91,20 +91,7 @@ def show():
 
         st.session_state["page"] = "forgot_password"
 
-        # UPDATE URL
-        if "username" in st.session_state:
-
-            st.experimental_set_query_params(
-                user=st.session_state["user"],
-                name=st.session_state["username"],
-                page="forgot_password"
-            )
-
-        else:
-
-            st.experimental_set_query_params(
-                page="forgot_password"
-            )
+        st.experimental_set_query_params(page="forgot_password")
 
         st.experimental_rerun()
     st.markdown('</div>', unsafe_allow_html=True)
