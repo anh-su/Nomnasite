@@ -23,9 +23,6 @@ _han_nom_input = components.declare_component(
     path=str(Path(__file__).parent / "components" / "han_nom_input")
 )
 from streamlit_javascript import st_javascript
-from services.translation_log import create_table as _create_log_table, save_entry, get_entries, get_entry_by_id, sync_from_local, delete_entry, toggle_star
-_create_log_table()
-from page import admin as admin_page          # cần sớm để check _is_admin() trong sidebar
 from handler.init_database import init_database
 from handler.dictionary_handler import translate_vi_to_hn, detect_language, _get_translations
 from handler.translator import db_hanviet, db_meaning, _load_db
@@ -36,6 +33,10 @@ def _init_db_once():
     init_database()
 
 _init_db_once()
+
+from services.translation_log import create_table as _create_log_table, save_entry, get_entries, get_entry_by_id, sync_from_local, delete_entry, toggle_star
+_create_log_table()
+from page import admin as admin_page          # cần sớm để check _is_admin() trong sidebar
 
 @st.cache_data(show_spinner=False)
 def _read_css(name: str) -> str:
