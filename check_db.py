@@ -1,0 +1,30 @@
+import sqlite3
+conn = sqlite3.connect("database/dictionary.db")
+c = conn.cursor()
+c.execute("SELECT name FROM sqlite_master WHERE type='table'")
+print("Tables:", c.fetchall())
+c.execute("SELECT COUNT(*) FROM translations")
+print("translations rows:", c.fetchone()[0])
+c.execute("SELECT COUNT(*) FROM ai_translations")
+print("ai_translations rows:", c.fetchone()[0])
+c.execute("PRAGMA table_info(translations)")
+print("translations schema:")
+for row in c.fetchall():
+    print(" ", row)
+c.execute("PRAGMA table_info(ai_translations)")
+print("ai_translations schema:")
+for row in c.fetchall():
+    print(" ", row)
+c.execute("SELECT vietnamese, han_nom FROM translations LIMIT 5")
+print("Sample translations:", c.fetchall())
+conn.close()
+
+conn2 = sqlite3.connect("database/nom_ocr.db")
+c2 = conn2.cursor()
+c2.execute("SELECT name FROM sqlite_master WHERE type='table'")
+print("nom_ocr Tables:", c2.fetchall())
+c2.execute("PRAGMA table_info(translation_log)")
+print("translation_log schema:")
+for row in c2.fetchall():
+    print(" ", row)
+conn2.close()

@@ -1,0 +1,6 @@
+/* Chỉ áp dụng cho vùng nội dung chính, không chạm sidebar */
+.block-container .stButton button,
+.block-container .stDownloadButton button {
+    min-height: 70px !important;
+}
+div[role="radiogroup"] { justify-content: flex-start; gap: 20px; }

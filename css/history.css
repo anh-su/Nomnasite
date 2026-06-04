@@ -1,0 +1,56 @@
+.hist-header {
+    background: linear-gradient(120deg, #262660 0%, #1a1a50 60%, #f69322 140%);
+    border-radius: 16px;
+    padding: 22px 32px;
+    margin-bottom: 22px;
+    color: white;
+}
+.hist-header h2 {
+    margin: 0; font-size: 26px; font-weight: 900;
+    letter-spacing: 2px; color: #f69322;
+}
+.hist-header p { margin: 4px 0 0 0; font-size: 13px; color: rgba(255,255,255,0.75); }
+
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+}
+.stat-card {
+    background: white; border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(38,38,96,0.09);
+    padding: 16px 20px; border-left: 4px solid #f69322;
+    display: flex; align-items: center; gap: 14px;
+}
+.stat-icon { font-size: 28px; }
+.stat-val  { font-size: 22px; font-weight: 800; color: #262660; line-height: 1; }
+.stat-lbl  { font-size: 12px; color: #888; margin-top: 2px; }
+
+.hist-nom  { font-size: 22px; font-weight: 700; color: #262660;
+             margin-bottom: 6px; font-family: serif; }
+.hist-row  { font-size: 13px; color: #555; margin: 3px 0; }
+.hist-row b { color: #262660; }
+.hist-time { font-size: 11px; color: #aaa; margin-top: 8px; }
+
+.conf-badge { display: inline-block; padding: 2px 10px; border-radius: 20px;
+              font-size: 12px; font-weight: 700; }
+.conf-high   { background: #e8f5e9; color: #2e7d32; }
+.conf-medium { background: #fff3e0; color: #e65100; }
+.conf-low    { background: #fce4ec; color: #c62828; }
+
+.empty-state { text-align: center; padding: 60px 20px; color: #aaa; }
+.empty-state .empty-icon { font-size: 52px; margin-bottom: 12px; }
+.empty-state p { font-size: 15px; }
+
+.sel-count {
+    padding-top: 6px; color: #f69322;
+    font-size: 13px; font-weight: 600;
+}
+
+/* Căn giữa nút icon (ngôi sao, thùng rác) trong cột của nó */
+[data-testid="stButton"] {
+    display: flex;
+    justify-content: center;
+}
+

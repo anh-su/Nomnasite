@@ -1,0 +1,199 @@
+{
+    "num_boxes": 24,
+    "height": 500,
+    "width": 421,
+    "patches": [
+        {
+            "nom": "哭嘆坤掣事情",
+            "modern": "Khóc than khôn xiết sự tình,",
+            "accuracy": "99.9%",
+            "points": "359,13,389,13,389,203,359,203",
+            "height": "190",
+            "width": "30"
+        },
+        {
+            "nom": "窖󰟁緣閉󰑼命貝些",
+            "modern": "Khéo vô duyên bấy là mình với ta!",
+            "accuracy": "99.9%",
+            "points": "358,239,389,239,389,489,358,489",
+            "height": "250",
+            "width": "31"
+        },
+        {
+            "nom": "㐌空縁畧庄麻",
+            "modern": "Đã không duyên trước chăng mà,",
+            "accuracy": "99.1%",
+            "points": "327,15,356,15,356,204,327,204",
+            "height": "189",
+            "width": "29"
+        },
+        {
+            "nom": "時之𡭧約噲󰑼縁𡢐",
+            "modern": "Thì chi chút ước gọi là duyên sau.",
+            "accuracy": "97.5%",
+            "points": "327,238,355,238,355,489,327,489",
+            "height": "251",
+            "width": "28"
+        },
+        {
+            "nom": "懺生攝梓車珠",
+            "modern": "Sắm xanh nếp tử xe châu,",
+            "accuracy": "99.5%",
+            "points": "297,15,322,15,322,200,297,200",
+            "height": "185",
+            "width": "25"
+        },
+        {
+            "nom": "𡏧燶没捻默油𦹵花",
+            "modern": "vùi nông một nấm mặc dầu cỏ hoa.",
+            "accuracy": "99.8%",
+            "points": "295,239,323,239,323,490,295,490",
+            "height": "251",
+            "width": "28"
+        },
+        {
+            "nom": "󰠵包兎𣵰鵶斜",
+            "modern": "Trải bao Thỏ lặn ác tà",
+            "accuracy": "96.7%",
+            "points": "263,17,291,17,291,201,263,201",
+            "height": "184",
+            "width": "28"
+        },
+        {
+            "nom": "衣墓󰟁主埃麻咏柴",
+            "modern": "y mộ VÔ chủ ai ma vắng sài",
+            "accuracy": "95.1%",
+            "points": "266,242,289,242,289,487,266,487",
+            "height": "245",
+            "width": "23"
+        },
+        {
+            "nom": "𢚸兜産𤷱傷心",
+            "modern": "Lòng đâu sẵn món thương tâm,",
+            "accuracy": "99.5%",
+            "points": "231,18,258,18,258,200,231,200",
+            "height": "182",
+            "width": "27"
+        },
+        {
+            "nom": "説𦖑翹㐌潭潭珠沙",
+            "modern": "Thoắt nghe Kiều đã đầm đầm châu sa.",
+            "accuracy": "95.3%",
+            "points": "232,241,259,241,259,486,232,486",
+            "height": "245",
+            "width": "27"
+        },
+        {
+            "nom": "𤴬疸台分弹󰜏",
+            "modern": "\"Đau đớn thay phận đàn bà,",
+            "accuracy": "100.0%",
+            "points": "198,19,226,19,226,205,198,205",
+            "height": "186",
+            "width": "28"
+        },
+        {
+            "nom": "𠳒󰑼分薄拱󰑼𠳒終",
+            "modern": "Lời là phận bạc cũng là lời chung.",
+            "accuracy": "99.7%",
+            "points": "202,247,225,247,225,486,202,486",
+            "height": "239",
+            "width": "23"
+        },
+        {
+            "nom": "負劳之貝化工",
+            "modern": "phụ lao chị bối hóa công",
+            "accuracy": "96.5%",
+            "points": "169,22,194,22,194,198,169,198",
+            "height": "176",
+            "width": "25"
+        },
+        {
+            "nom": "𣈜撑𤷱痗𦟐紅配波",
+            "modern": "người xanh món mỏi Má hồng phối ba",
+            "accuracy": "97.4%",
+            "points": "172,245,194,245,194,485,172,485",
+            "height": "240",
+            "width": "22"
+        },
+        {
+            "nom": "𤯨爫𡞕㐌𠊛些",
+            "modern": "Sống “Làm vợ cam người tạ",
+            "accuracy": "96.9%",
+            "points": "138,23,162,23,162,200,138,200",
+            "height": "177",
+            "width": "24"
+        },
+        {
+            "nom": "窖台托𬺗爫魔空𫯳",
+            "modern": "Khéo thay thác xuống làm ma không chồng.",
+            "accuracy": "97.2%",
+            "points": "140,244,163,244,163,485,140,485",
+            "height": "241",
+            "width": "23"
+        },
+        {
+            "nom": "芇𠊛風乍爲終",
+            "modern": "Nào người phong Sạ vị chung",
+            "accuracy": "96.4%",
+            "points": "109,24,131,24,131,202,109,202",
+            "height": "178",
+            "width": "22"
+        },
+        {
+            "nom": "芇𠊛惜綠貪紅󰑼埃",
+            "modern": "Nào người tiếc lục tham hồng là ai?",
+            "accuracy": "99.7%",
+            "points": "108,241,134,241,134,486,108,486",
+            "height": "245",
+            "width": "26"
+        },
+        {
+            "nom": "㐌空兎㐌𠊛幔",
+            "modern": "cam không Thỏ cam người Màn",
+            "accuracy": "92.5%",
+            "points": "79,23,104,23,104,205,79,205",
+            "height": "182",
+            "width": "25"
+        },
+        {
+            "nom": "産低些劎没𠄽𥘀香",
+            "modern": "Sẵn đây ta kiếm một vài nén hương.",
+            "accuracy": "99.6%",
+            "points": "78,241,105,241,105,486,78,486",
+            "height": "245",
+            "width": "27"
+        },
+        {
+            "nom": "噲󰑼﨤群𫡉塘",
+            "modern": "gối LÀ Gấp quần Giữa đường",
+            "accuracy": "95.5%",
+            "points": "49,27,70,27,70,205,49,205",
+            "height": "178",
+            "width": "21"
+        },
+        {
+            "nom": "和󰑼𠊛𠁑𤂬鐄别朱",
+            "modern": "Hoạ là người dưới suối vàng biết cho.\"",
+            "accuracy": "91.0%",
+            "points": "49,238,72,238,72,484,49,484",
+            "height": "246",
+            "width": "23"
+        },
+        {
+            "nom": "啉𠽍哏㗑𡮈𫰅",
+            "modern": "Lầm rầm khấn vái nhỏ to,",
+            "accuracy": "94.4%",
+            "points": "19,25,42,25,42,208,19,208",
+            "height": "183",
+            "width": "23"
+        },
+        {
+            "nom": "𤼸𡎦把𦹵畧墓𦖑羅",
+            "modern": "dâng Ngồi bá Cỏ Trước mộ “nghe la",
+            "accuracy": "88.3%",
+            "points": "19,240,40,240,40,483,19,483",
+            "height": "243",
+            "width": "21"
+        }
+    ]
+}

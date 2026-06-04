@@ -1,0 +1,23 @@
+.block-container {
+    max-width: 600px;
+    margin: auto;
+    padding-top: 80px;
+}
+
+.title {
+    text-align: center;
+    font-size: 26px;
+    font-weight: bold;
+    color: #262660;
+    margin-bottom: 10px;
+}
+
+button[kind="primary"] {
+    background: #f69322 !important;
+    color: #262660 !important;
+}
+.register-btn button:hover {
+    background: #ffa53a !important;
+    color: #262660 !important;
+    transform: translateY(-1px);
+}

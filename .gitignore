@@ -1,0 +1,27 @@
+__pycache__/
+.ipynb_checkpoints
+*.zip
+*.jpg
+!patches.zip
+!cover.jpg
+venv/
+__pycache__/
+*.pyc
+*.db
+.idea/
+.vscode/
+
+# Secrets — KHÔNG commit lên GitHub
+.env
+serviceAccountKey.json
+
+# Claude Code
+.claude/
+
+# Training checkpoints
+TEST_DB/
+
+# Logs
+streamlit_out.txt
+streamlit_err.txt
+backup.txt
