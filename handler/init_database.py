@@ -35,6 +35,16 @@ def init_database():
     )
     """)
 
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS ai_translations (
+        id        INTEGER PRIMARY KEY AUTOINCREMENT,
+        nom_text  TEXT UNIQUE,
+        meaning   TEXT,
+        vi_meaning TEXT,
+        poetry    TEXT
+    )
+    """)
+
     # kiểm tra có dữ liệu chưa
     cursor.execute("SELECT COUNT(*) FROM translations")
 
