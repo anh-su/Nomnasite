@@ -4,54 +4,94 @@
   <meta charset="utf-8">
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
-    body{background:transparent;overflow:hidden}
+    body{background:transparent;overflow:visible}
+    #wrap{position:relative;width:100%}
     #ta{width:100%;height:224px;border:1px solid rgba(49,51,63,.2);border-radius:.5rem;
         padding:8px 12px;font-size:14px;resize:none;outline:none;
         line-height:1.6;color:#1a1a2e;background:#fff;
         transition:border-color .15s,box-shadow .15s}
     #ta:focus{border-color:#f69322;box-shadow:0 0 0 1px rgba(246,147,34,.35)}
     #ta::placeholder{color:#bbb}
+    #cj-panel{display:none;margin-top:4px;background:#fff;border:1.5px solid #d0d7e8;
+              border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.14);
+              font-family:sans-serif;user-select:none}
+    #cj-top{display:flex;align-items:center;padding:5px 10px;
+            border-bottom:1px solid #eef0f6;gap:8px}
+    #cj-code{font-family:monospace;font-size:14px;font-weight:700;
+             color:#262660;letter-spacing:2px;min-width:20px}
+    #cj-sep{color:#ccc}
+    #cj-rads{font-size:14px;color:#f69322}
+    #cj-row{display:flex;align-items:stretch;padding:4px 6px;gap:2px;flex-wrap:wrap}
+    .cj-c{display:flex;flex-direction:column;align-items:center;border-radius:6px;
+          cursor:pointer;padding:3px 6px;min-width:36px;
+          border:1px solid transparent;transition:.12s}
+    .cj-c:hover{background:#fff3e0;border-color:#f69322}
+    .cj-n{font-size:10px;color:#aaa;line-height:1;margin-bottom:1px}
+    .cj-c:hover .cj-n{color:#f69322}
+    .cj-h{font-size:22px;color:#1a1a2e;line-height:1}
+    #cj-more{font-size:11px;color:#999;padding:0 10px;align-self:center;cursor:pointer}
+    #cj-more:hover{color:#262660}
   </style>
 </head>
 <body>
-<textarea id="ta" placeholder="Nhập văn bản Hán Nôm hoặc Quốc Ngữ…" spellcheck="false"></textarea>
+<div id="wrap">
+  <textarea id="ta" placeholder="Nhập văn bản Hán Nôm hoặc Quốc Ngữ…" spellcheck="false"></textarea>
+  <div id="cj-panel">
+    <div id="cj-top">
+      <span id="cj-code"></span>
+      <span id="cj-sep">│</span>
+      <span id="cj-rads"></span>
+    </div>
+    <div id="cj-row"></div>
+  </div>
+</div>
 <script>
 (function(){
   var base=window.location.origin;
 
   /* Load font NomNaTong */
   var fs=document.createElement('style');
-  fs.textContent="@font-face{font-family:'NomNaTong';src:url('"+base+"/app/static/NomNaTong.otf')}#ta{font-family:'NomNaTong',serif;}";
+  fs.textContent="@font-face{font-family:'NomNaTong';src:url('"+base+"/app/static/NomNaTong.otf')}"
+    +"#ta,#cj-rads,.cj-h{font-family:'NomNaTong',serif}";
   document.head.appendChild(fs);
 
   var ta=document.getElementById('ta');
-  var P=window.parent,PD=P.document;
+  var panel=document.getElementById('cj-panel');
+  var pendingValue=null;
   var cangjie=false;
-  var pendingValue=null; /* giá trị vừa gửi lên Python; bỏ qua render echo cũ */
+  var D=null,buf='',pg=0,cands=[];
+  var BASE_H=240;
 
-  /* ── Streamlit component protocol ── */
+  var KN={a:'日',b:'月',c:'金',d:'木',e:'水',f:'火',g:'土',h:'竹',i:'戈',
+          j:'十',k:'大',l:'中',m:'一',n:'弓',o:'人',p:'心',q:'手',r:'口',
+          s:'尸',t:'廿',u:'山',v:'女',w:'田',x:'難',y:'卜',z:'重'};
+
+  /* ── Streamlit protocol ── */
   function post(type,data){
     window.parent.postMessage(Object.assign({isStreamlitMessage:true,type:type},data),'*');
   }
   post('streamlit:componentReady',{apiVersion:1});
-  post('streamlit:setFrameHeight',{height:240});
+  post('streamlit:setFrameHeight',{height:BASE_H});
+
+  function setH(){
+    var h=BASE_H+(panel.style.display!=='none'?panel.offsetHeight+8:0);
+    post('streamlit:setFrameHeight',{height:h});
+  }
 
   window.addEventListener('message',function(e){
     if(!e.data||e.data.type!=='streamlit:render')return;
     var args=e.data.args||{};
     if(typeof args.value==='string'){
       if(pendingValue!==null){
-        /* Đang chờ Python echo lại giá trị đúng; bỏ qua mọi render cũ */
-        if(args.value===pendingValue)pendingValue=null; /* Python đã catch-up */
-      } else if(document.activeElement!==ta&&args.value!==ta.value){
+        if(args.value===pendingValue)pendingValue=null;
+      }else if(document.activeElement!==ta&&args.value!==ta.value){
         ta.value=args.value;
       }
     }
-    /* Toggle Cangjie */
     var newCj=!!args.cangjie;
     if(newCj!==cangjie){
       cangjie=newCj;
-      if(cangjie)setupCj();else teardownCj();
+      if(!cangjie){buf='';pg=0;panel.style.display='none';setH();}
     }
   });
 
@@ -61,72 +101,14 @@
     post('streamlit:setComponentValue',{value:ta.value});
   });
 
+  /* Load cangjie5.json */
+  fetch(base+'/app/static/cangjie5.json')
+    .then(function(r){return r.json();})
+    .then(function(d){D=d;});
+
   /* ── Cangjie IME ── */
-  var KN={a:'日',b:'月',c:'金',d:'木',e:'水',f:'火',g:'土',h:'竹',i:'戈',
-          j:'十',k:'大',l:'中',m:'一',n:'弓',o:'人',p:'心',q:'手',r:'口',
-          s:'尸',t:'廿',u:'山',v:'女',w:'田',x:'難',y:'卜',z:'重'};
-  var D=null,buf='',pg=0,cands=[],panel=null;
-
-  fetch(base+'/app/static/cangjie5.json').then(function(r){return r.json();}).then(function(d){D=d;});
-
-  function setupCj(){
-    teardownCj();
-
-    /* Style panel trong parent */
-    var sty=PD.createElement('style');sty.id='cj-sty';
-    sty.textContent=
-      "@font-face{font-family:'NomNaTong';src:url('"+base+"/app/static/NomNaTong.otf')}"
-     +'#cj-panel{position:fixed;z-index:9999;background:#fff;border:1.5px solid #d0d7e8;border-radius:8px;display:none;box-shadow:0 4px 20px rgba(0,0,0,.14);font-family:sans-serif;user-select:none}'
-     +'#cj-top{display:flex;align-items:center;padding:5px 10px;border-bottom:1px solid #eef0f6;gap:8px}'
-     +'#cj-code{font-family:monospace;font-size:14px;font-weight:700;color:#262660;letter-spacing:2px;min-width:20px}'
-     +'#cj-sep{color:#ccc}'
-     +'#cj-rads{font-family:"NomNaTong",serif;font-size:14px;color:#f69322}'
-     +'#cj-row{display:flex;align-items:stretch;padding:4px 6px;gap:2px;flex-wrap:wrap}'
-     +'.cj-c{display:flex;flex-direction:column;align-items:center;border-radius:6px;cursor:pointer;padding:3px 6px;min-width:36px;border:1px solid transparent;transition:.12s}'
-     +'.cj-c:hover{background:#fff3e0;border-color:#f69322}'
-     +'.cj-n{font-size:10px;color:#aaa;line-height:1;margin-bottom:1px}'
-     +'.cj-c:hover .cj-n{color:#f69322}'
-     +'.cj-h{font-family:"NomNaTong",serif;font-size:22px;color:#1a1a2e;line-height:1}'
-     +'#cj-more{font-size:11px;color:#999;padding:0 10px;align-self:center;cursor:pointer}'
-     +'#cj-more:hover{color:#262660}';
-    PD.head.appendChild(sty);
-
-    panel=PD.createElement('div');panel.id='cj-panel';
-    panel.innerHTML='<div id="cj-top"><span id="cj-code"></span><span id="cj-sep">│</span><span id="cj-rads"></span></div><div id="cj-row"></div>';
-    PD.body.appendChild(panel);
-
-    ta.addEventListener('keydown',onKeydown);
-    PD._cjMD=function(e){
-      if(panel&&panel.style.display!=='none'&&!panel.contains(e.target)&&e.target!==ta){
-        buf='';pg=0;panel.style.display='none';
-      }
-    };
-    PD.addEventListener('mousedown',PD._cjMD,true);
-  }
-
-  function teardownCj(){
-    ['cj-panel','cj-sty'].forEach(function(id){var e=PD.getElementById(id);if(e)e.remove();});
-    if(PD._cjMD){PD.removeEventListener('mousedown',PD._cjMD,true);PD._cjMD=null;}
-    ta.removeEventListener('keydown',onKeydown);
-    buf='';pg=0;cands=[];panel=null;
-  }
-
-  function posPanel(){
-    if(!panel)return;
-    /* Tìm iframe hiện tại trong parent để lấy offset */
-    var iframeRect={left:0,top:0};
-    var iframes=PD.querySelectorAll('iframe');
-    for(var i=0;i<iframes.length;i++){
-      try{if(iframes[i].contentWindow===window){iframeRect=iframes[i].getBoundingClientRect();break;}}
-      catch(e){}
-    }
-    var r=ta.getBoundingClientRect();
-    var pw=panel.offsetWidth||300;
-    var lft=r.left+iframeRect.left;
-    var top=r.bottom+iframeRect.top+4;
-    if(lft+pw>P.innerWidth-8)lft=P.innerWidth-pw-8;
-    panel.style.left=Math.max(4,lft)+'px';
-    panel.style.top=top+'px';
+  function hidePanel(){
+    buf='';pg=0;panel.style.display='none';setH();
   }
 
   function buildCands(){
@@ -142,44 +124,48 @@
   }
 
   function renderPage(){
-    var row=PD.getElementById('cj-row');if(!row)return;
+    var row=document.getElementById('cj-row');
     while(row.firstChild)row.removeChild(row.firstChild);
     if(!cands.length){
-      var empty=PD.createElement('span');
+      var empty=document.createElement('span');
       empty.style.cssText='padding:6px 12px;font-size:11px;color:#aaa';
       empty.textContent='Không tìm thấy';
-      row.appendChild(empty);return;
+      row.appendChild(empty);
+      setH();return;
     }
     var s0=pg*9,sl=cands.slice(s0,s0+9);
     sl.forEach(function(c,i){
-      var card=PD.createElement('div');card.className='cj-c';
-      var num=PD.createElement('span');num.className='cj-n';num.textContent=s0+i+1;
-      var ch=PD.createElement('span');ch.className='cj-h';ch.textContent=c;
+      var card=document.createElement('div');card.className='cj-c';
+      var num=document.createElement('span');num.className='cj-n';num.textContent=s0+i+1;
+      var ch=document.createElement('span');ch.className='cj-h';ch.textContent=c;
       card.appendChild(num);card.appendChild(ch);
       card.addEventListener('mousedown',function(e){e.preventDefault();sel(c);});
       row.appendChild(card);
     });
     if(cands.length>s0+9){
-      var more=PD.createElement('span');more.id='cj-more';
+      var more=document.createElement('span');more.id='cj-more';
       more.textContent='▸'+(cands.length-s0-9);
-      more.addEventListener('mousedown',function(e){e.preventDefault();pg++;renderPage();posPanel();});
+      more.addEventListener('mousedown',function(e){e.preventDefault();pg++;renderPage();});
       row.appendChild(more);
     }
+    setH();
   }
 
   function upd(){
-    if(!buf){if(panel)panel.style.display='none';return;}
-    var ce=PD.getElementById('cj-code'),re=PD.getElementById('cj-rads');
-    if(ce)ce.textContent=buf;
-    if(re)re.textContent=buf.split('').map(function(k){return KN[k]||k;}).join('+');
+    if(!buf){panel.style.display='none';setH();return;}
+    document.getElementById('cj-code').textContent=buf;
+    document.getElementById('cj-rads').textContent=
+      buf.split('').map(function(k){return KN[k]||k;}).join('+');
     if(D){pg=0;buildCands();renderPage();}
     else{
-      var row=PD.getElementById('cj-row');
-      if(row){while(row.firstChild)row.removeChild(row.firstChild);
-        var sp=PD.createElement('span');sp.style.cssText='padding:6px 12px;font-size:11px;color:#aaa';
-        sp.textContent='Đang tải…';row.appendChild(sp);}
+      var row=document.getElementById('cj-row');
+      while(row.firstChild)row.removeChild(row.firstChild);
+      var sp=document.createElement('span');
+      sp.style.cssText='padding:6px 12px;font-size:11px;color:#aaa';
+      sp.textContent='Đang tải…';row.appendChild(sp);
     }
-    posPanel();if(panel)panel.style.display='block';
+    panel.style.display='block';
+    setH();
   }
 
   function sel(c){
@@ -187,13 +173,15 @@
     var e2=ta.selectionEnd!=null?ta.selectionEnd:ta.value.length;
     ta.value=ta.value.slice(0,s)+c+ta.value.slice(e2);
     ta.selectionStart=ta.selectionEnd=s+1;
-    buf='';pg=0;if(panel)panel.style.display='none';ta.focus();
+    buf='';pg=0;panel.style.display='none';setH();ta.focus();
+    pendingValue=ta.value;
+    post('streamlit:setComponentValue',{value:ta.value});
   }
 
   function onKeydown(e){
     if(!cangjie)return;
     var k=e.key;
-    if(/^[1-9]$/.test(k)&&buf&&panel&&panel.style.display!=='none'){
+    if(/^[1-9]$/.test(k)&&buf&&panel.style.display!=='none'){
       var idx=parseInt(k)-1+pg*9;
       if(idx<cands.length){e.preventDefault();sel(cands[idx]);}
       return;
@@ -202,10 +190,18 @@
       e.preventDefault();sel(cands[pg*9]);return;
     }
     if(k==='Backspace'&&buf){e.preventDefault();buf=buf.slice(0,-1);pg=0;upd();return;}
-    if(k==='Escape'){buf='';pg=0;if(panel)panel.style.display='none';return;}
+    if(k==='Escape'){hidePanel();return;}
     var lw=k.toLowerCase();
     if(/^[a-z]$/.test(lw)&&buf.length<5){e.preventDefault();buf+=lw;pg=0;upd();return;}
   }
+
+  ta.addEventListener('keydown',onKeydown);
+
+  document.addEventListener('mousedown',function(e){
+    if(panel.style.display!=='none'&&!panel.contains(e.target)&&e.target!==ta){
+      hidePanel();
+    }
+  });
 })();
 </script>
 </body>
