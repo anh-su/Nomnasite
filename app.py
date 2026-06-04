@@ -40,13 +40,16 @@ import json
 from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent / ".env", override=True)
-# Streamlit Cloud: inject st.secrets vào os.environ để các os.getenv() hoạt động bình thường
-try:
-    for _k, _v in st.secrets.items():
-        if isinstance(_v, str) and _k not in os.environ:
-            os.environ[_k] = _v
-except Exception:
-    pass
+# Streamlit Cloud: inject st.secrets vào os.environ (chỉ khi file secrets tồn tại)
+_secrets_file = (Path.home() / ".streamlit" / "secrets.toml")
+_local_secrets = Path(__file__).parent / ".streamlit" / "secrets.toml"
+if _secrets_file.exists() or _local_secrets.exists():
+    try:
+        for _k, _v in st.secrets.items():
+            if isinstance(_v, str) and _k not in os.environ:
+                os.environ[_k] = _v
+    except Exception:
+        pass
 import streamlit.components.v1 as components
 
 _han_nom_input = components.declare_component(
