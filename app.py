@@ -56,6 +56,11 @@ _han_nom_input = components.declare_component(
     "han_nom_input",
     path=str(Path(__file__).parent / "components" / "han_nom_input")
 )
+
+@st.cache_data(show_spinner=False)
+def _load_cangjie_data() -> dict:
+    p = Path(__file__).parent / "static" / "cangjie5.json"
+    return json.load(open(p, encoding="utf-8")) if p.exists() else {}
 from streamlit_javascript import st_javascript
 from handler.init_database import init_database
 from handler.dictionary_handler import translate_vi_to_hn, detect_language, _get_translations
@@ -347,6 +352,7 @@ if page == "home":
         new_text = _han_nom_input(
             value=old_text,
             cangjie=cangjie_on,
+            cangjie_data=_load_cangjie_data(),
             key=f"han_nom_comp_{st.session_state.input_version}",
             default=old_text
         )

@@ -81,6 +81,7 @@
   window.addEventListener('message',function(e){
     if(!e.data||e.data.type!=='streamlit:render')return;
     var args=e.data.args||{};
+    if(args.cangjie_data&&!D)D=args.cangjie_data;
     if(typeof args.value==='string'){
       if(pendingValue!==null){
         if(args.value===pendingValue)pendingValue=null;
@@ -101,10 +102,7 @@
     post('streamlit:setComponentValue',{value:ta.value});
   });
 
-  /* Load cangjie5.json */
-  fetch(base+'/app/static/cangjie5.json')
-    .then(function(r){return r.json();})
-    .then(function(d){D=d;});
+  /* cangjie5.json được truyền từ Python qua props (args.cangjie_data) */
 
   /* ── Cangjie IME ── */
   function hidePanel(){
