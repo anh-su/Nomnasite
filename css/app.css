@@ -2,6 +2,7 @@
 @font-face {
     font-family: 'HanaMin';
     src: url('/app/static/HanaMinA.otf') format('opentype');
+    font-display: block;
     unicode-range: U+3400-4DBF, U+20000-2A6DF, U+2A700-2B73F,
                    U+2B740-2B81F, U+2B820-2CEAF, U+F900-FAFF,
                    U+2F800-2FA1F;
@@ -10,6 +11,7 @@
 @font-face {
     font-family: 'NomNaTong';
     src: url('/app/static/NomNaTong.otf') format('opentype');
+    font-display: block;
     unicode-range: U+F0000-U+FFFFF;
 }
 body, .stMarkdown, p, span, td, th, .stExpander {
