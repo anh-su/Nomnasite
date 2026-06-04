@@ -93,19 +93,22 @@ def _nom_font_b64() -> str:
 
 @st.cache_data(show_spinner=False)
 def _font_face_css() -> str:
-    b64 = _nom_font_b64()
-    if not b64:
-        return ""
-    # NomNaTong embed base64 (9MB) — hiện ngay, không HTTP request
-    # HanaMinA dùng URL — 30MB nên không embed, browser cache sau lần đầu
-    return (f"@font-face{{font-family:'NomNaTong';"
-            f"src:url('data:font/opentype;base64,{b64}') format('opentype');"
-            f"unicode-range:U+F0000-U+FFFFF;}}"
-            f"@font-face{{font-family:'HanaMin';"
-            f"src:url('/app/static/HanaMinA.otf') format('opentype');"
-            f"font-display:swap;"
-            f"unicode-range:U+3400-4DBF,U+20000-2A6DF,U+2A700-2B73F,"
-            f"U+2B740-2B81F,U+2B820-2CEAF,U+F900-FAFF,U+2F800-2FA1F;}}")
+    """Embed cả NomNaTong + HanaMinA dưới dạng base64 để hiện ký tự ngay lập tức."""
+    css = ""
+    for fname, family, urange in [
+        ("NomNaTong.otf", "NomNaTong",
+         "U+F0000-U+FFFFF"),
+        ("HanaMinA.otf",  "HanaMin",
+         "U+3400-4DBF,U+20000-2A6DF,U+2A700-2B73F,"
+         "U+2B740-2B81F,U+2B820-2CEAF,U+F900-FAFF,U+2F800-2FA1F"),
+    ]:
+        p = Path(__file__).parent / "static" / fname
+        if p.exists():
+            b64 = base64.b64encode(p.read_bytes()).decode()
+            css += (f"@font-face{{font-family:'{family}';"
+                    f"src:url('data:font/opentype;base64,{b64}') format('opentype');"
+                    f"unicode-range:{urange};}}")
+    return css
 
 st.markdown(f"<style>{_font_face_css()}</style>", unsafe_allow_html=True)
 _load_css("app.css")
