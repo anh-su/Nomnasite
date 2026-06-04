@@ -8,6 +8,7 @@ venv/
 __pycache__/
 *.pyc
 *.db
+!database/dictionary.db
 .idea/
 .vscode/
 
