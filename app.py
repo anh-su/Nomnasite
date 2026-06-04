@@ -36,6 +36,7 @@ st.set_page_config(
     '🇻🇳',
     'wide'
 )
+import base64
 import json
 from pathlib import Path
 from dotenv import load_dotenv
@@ -84,6 +85,23 @@ def _read_css(name: str) -> str:
 def _load_css(name: str) -> None:
     st.markdown(f"<style>{_read_css(name)}</style>", unsafe_allow_html=True)
 
+@st.cache_data(show_spinner=False)
+def _font_face_css() -> str:
+    """Embed NomNaTong + HanaMinA as base64 → font sẵn sàng ngay, không cần HTTP request."""
+    css = ""
+    for fname, family, urange in [
+        ("NomNaTong.otf",  "NomNaTong", "U+F0000-U+FFFFF"),
+        ("HanaMinA.otf",   "HanaMin",   "U+3400-4DBF,U+20000-2A6DF,U+2A700-2B73F,U+2B740-2B81F,U+2B820-2CEAF,U+F900-FAFF,U+2F800-2FA1F"),
+    ]:
+        p = Path(__file__).parent / "static" / fname
+        if p.exists():
+            b64 = base64.b64encode(p.read_bytes()).decode()
+            css += (f"@font-face{{font-family:'{family}';"
+                    f"src:url('data:font/opentype;base64,{b64}') format('opentype');"
+                    f"unicode-range:{urange};}}")
+    return css
+
+st.markdown(f"<style>{_font_face_css()}</style>", unsafe_allow_html=True)
 _load_css("app.css")
 
 # _load_db() và _get_translations() tự cache bằng Python global — không cần preload
