@@ -24,6 +24,17 @@ def _load_db():
     conn = sqlite3.connect(_DB)
     cur  = conn.cursor()
 
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS ai_translations (
+            id        INTEGER PRIMARY KEY AUTOINCREMENT,
+            nom_text  TEXT UNIQUE,
+            meaning   TEXT,
+            vi_meaning TEXT,
+            poetry    TEXT
+        )
+    """)
+    conn.commit()
+
     cur.execute("SELECT nom_text, meaning, vi_meaning FROM ai_translations")
     _phrase_phonetic = {}
     _phrase_meaning  = {}
