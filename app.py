@@ -288,10 +288,12 @@ with st.sidebar:
 # PAGE
 page = st.session_state.get("page", "home")
 
+# BACKGROUND — áp dụng cho mọi trang
+st.markdown(bg_css(), unsafe_allow_html=True)
+
 # HIỂN THỊ TRANG
 
 if page == "home":
-    st.markdown(bg_css(), unsafe_allow_html=True)
 
     # ===== HERO =====
     st.markdown("""
