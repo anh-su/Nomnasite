@@ -47,13 +47,17 @@
 </div>
 <script>
 (function(){
-  var base=window.location.origin;
-
-  /* Load font NomNaTong */
-  var fs=document.createElement('style');
-  fs.textContent="@font-face{font-family:'NomNaTong';src:url('"+base+"/app/static/NomNaTong.otf')}"
-    +"#ta,#cj-rads,.cj-h{font-family:'NomNaTong',serif}";
-  document.head.appendChild(fs);
+  /* Font được inject từ Python props (nom_font_b64) khi nhận streamlit:render */
+  var _fontInjected=false;
+  function _injectFont(b64){
+    if(_fontInjected||!b64)return;
+    _fontInjected=true;
+    var fs=document.createElement('style');
+    fs.textContent="@font-face{font-family:'NomNaTong';"
+      +"src:url('data:font/opentype;base64,"+b64+"') format('opentype');}"
+      +"#ta,#cj-rads,.cj-h{font-family:'NomNaTong',serif}";
+    document.head.appendChild(fs);
+  }
 
   var ta=document.getElementById('ta');
   var panel=document.getElementById('cj-panel');
@@ -81,6 +85,7 @@
   window.addEventListener('message',function(e){
     if(!e.data||e.data.type!=='streamlit:render')return;
     var args=e.data.args||{};
+    if(args.nom_font_b64)_injectFont(args.nom_font_b64);
     if(args.cangjie_data&&!D)D=args.cangjie_data;
     if(typeof args.value==='string'){
       if(pendingValue!==null){
