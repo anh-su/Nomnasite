@@ -1,4 +1,21 @@
 import os
+import sys
+import types
+
+# pyrebase4 phụ thuộc vào 'gcloud' cổ (2016) không tương thích uv/modern pip
+# → mock trước khi pyrebase được import bất kỳ đâu
+try:
+    import gcloud as _gcloud_test  # noqa
+except Exception:
+    _gcloud_mod = types.ModuleType('gcloud')
+    _storage_mod = types.ModuleType('gcloud.storage')
+    class _FakeStorageClient:
+        def __init__(self, *a, **kw): pass
+    _storage_mod.Client = _FakeStorageClient
+    _gcloud_mod.storage = _storage_mod
+    sys.modules['gcloud'] = _gcloud_mod
+    sys.modules['gcloud.storage'] = _storage_mod
+
 import streamlit as st
 st.set_page_config(
     'Nomnasite',
