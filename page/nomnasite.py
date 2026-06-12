@@ -30,6 +30,17 @@ _CSS_FILE  = Path(__file__).parent.parent / "css" / "nomnasite.css"
 _IMGS_DIR  = Path(__file__).parent.parent / "imgs"
 _BG_LIGHT  = base64.b64encode((_IMGS_DIR / "background.webp").read_bytes()).decode()
 
+
+@st.cache_data(show_spinner=False)
+def _nom_b64_css() -> str:
+    """Return @font-face CSS with NomNaTong embedded as base64 (works inside iframes)."""
+    p = Path(__file__).parent.parent / "static" / "NomNaTong.otf"
+    if p.exists():
+        b64 = base64.b64encode(p.read_bytes()).decode()
+        return (f"@font-face{{font-family:'NomNaTong';"
+                f"src:url('data:font/opentype;base64,{b64}') format('opentype');}}")
+    return "@font-face{font-family:'NomNaTong';src:url('/app/static/NomNaTong.otf') format('opentype');}"
+
 _ARCHIVE_DIR = Path(__file__).parent.parent / "data" / "archive" / "Raw"
 
 # URL pattern → (tên, niên đại, url_page_regex)
@@ -652,7 +663,7 @@ def show():
 
             table_html = f"""
 <style>
-@font-face{{font-family:'NomNaTong';src:url('/app/static/NomNaTong.otf') format('opentype');}}
+{_nom_b64_css()}
 @font-face{{font-family:'HanaMin';src:url('/app/static/HanaMinA.otf') format('opentype');}}
 *{{box-sizing:border-box;margin:0;padding:0}}
 body{{background:transparent;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}}
