@@ -6,6 +6,7 @@ from streamlit_javascript import st_javascript
 import pyrebase
 from firebase_config import firebaseConfig
 from services.firebase_roles import get_role
+from services.ocr_session import track_login
 
 firebase = pyrebase.initialize_app(firebaseConfig)
 auth = firebase.auth()
@@ -27,15 +28,13 @@ def show():
         )
 
         if not isinstance(saved_raw, str):
-            # JS chưa phản hồi (render đầu tiên) → hiện tiêu đề, chờ rerun
-            col1, _ = st.columns([1.2, 1])
-            with col1:
-                st.markdown('<div class="fb-title">Nomnasite</div>', unsafe_allow_html=True)
-                st.markdown(
-                    '<div class="fb-desc">Đăng nhập để sử dụng hệ thống dịch Hán Nôm sang Quốc Ngữ.</div>',
-                    unsafe_allow_html=True,
-                )
-            return  # Dừng sớm, chờ JS phản hồi → Streamlit sẽ tự rerun
+            # JS chưa phản hồi → hiện placeholder KHÔNG dùng st.columns (tránh layout shift sidebar)
+            st.markdown('<div class="fb-title">Nomnasite</div>', unsafe_allow_html=True)
+            st.markdown(
+                '<div class="fb-desc">Đăng nhập để sử dụng hệ thống dịch Hán Nôm sang Quốc Ngữ.</div>',
+                unsafe_allow_html=True,
+            )
+            return
 
         # JS đã phản hồi → parse và prefill TRƯỚC khi bất kỳ widget nào render
         st.session_state["login_prefilled"] = True
@@ -123,6 +122,7 @@ def show():
                     st.session_state["role"]             = role
                     st.session_state["need_sync_local"]  = True
                     st.session_state["_fb_verified"]     = True
+                    track_login(name, email)
 
                     # Lưu vào localStorage để restore sau khi server restart
                     _eu = user["email"].replace("'", "\\'")

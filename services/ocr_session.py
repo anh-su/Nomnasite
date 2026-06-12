@@ -112,15 +112,31 @@ def create_tables():
             hanviet       TEXT DEFAULT '',
             accuracy      TEXT DEFAULT '',
             saved         INTEGER DEFAULT 0,
-            updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            points        TEXT DEFAULT '',
+            bbox_h        TEXT DEFAULT '',
+            bbox_w        TEXT DEFAULT ''
         )
     """)
-    # Migration: thêm is_favorite nếu DB cũ chưa có
-    try:
-        conn.execute("ALTER TABLE ocr_sessions ADD COLUMN is_favorite INTEGER DEFAULT 0")
-        conn.commit()
-    except Exception:
-        pass
+    # Migration: thêm các cột mới nếu DB cũ chưa có
+    for _col, _tbl, _def in [
+        ("is_favorite", "ocr_sessions", "INTEGER DEFAULT 0"),
+        ("points",      "ocr_boxes",    "TEXT DEFAULT ''"),
+        ("bbox_h",      "ocr_boxes",    "TEXT DEFAULT ''"),
+        ("bbox_w",      "ocr_boxes",    "TEXT DEFAULT ''"),
+    ]:
+        try:
+            conn.execute(f"ALTER TABLE {_tbl} ADD COLUMN {_col} {_def}")
+            conn.commit()
+        except Exception:
+            pass
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS user_logins (
+            username   TEXT PRIMARY KEY,
+            email      TEXT DEFAULT '',
+            last_login TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
     conn.commit()
     conn.close()
 
@@ -129,6 +145,28 @@ def create_tables():
 
 def _now_str():
     return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def track_login(username: str, email: str = ""):
+    """Ghi nhận lần đăng nhập — đảm bảo user xuất hiện trong danh sách admin."""
+    now = _now_str()
+    if _USE_CLOUD:
+        try:
+            _supa.table("user_logins").upsert(
+                {"username": username, "email": email or username, "last_login": now},
+                on_conflict="username"
+            ).execute()
+        except Exception:
+            pass
+        return
+    conn = _conn()
+    conn.execute("""
+        INSERT INTO user_logins (username, email, last_login)
+        VALUES (?, ?, ?)
+        ON CONFLICT(username) DO UPDATE SET last_login=excluded.last_login, email=excluded.email
+    """, (username, email or username, now))
+    conn.commit()
+    conn.close()
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
@@ -236,11 +274,21 @@ def save_boxes(session_id, ocr_data: list):
                 "hanviet":       d.get("modern", ""),
                 "accuracy":      d.get("accuracy", ""),
                 "saved":         False,
+                "points":        d.get("points", ""),
+                "bbox_h":        d.get("height", ""),
+                "bbox_w":        d.get("width", ""),
             }
             for i, d in enumerate(ocr_data)
         ]
         if rows:
-            _supa.table("ocr_boxes").insert(rows).execute()
+            try:
+                _supa.table("ocr_boxes").insert(rows).execute()
+            except Exception:
+                # Fallback nếu Supabase chưa có cột mới
+                rows_basic = [{k: v for k, v in r.items()
+                               if k not in ('points', 'bbox_h', 'bbox_w')} for r in rows]
+                if rows_basic:
+                    _supa.table("ocr_boxes").insert(rows_basic).execute()
         return
 
     # SQLite
@@ -251,8 +299,11 @@ def save_boxes(session_id, ocr_data: list):
         return
     for i, d in enumerate(ocr_data):
         conn.execute(
-            "INSERT INTO ocr_boxes (session_id, box_index, nom_ocr, hanviet, accuracy) VALUES (?,?,?,?,?)",
-            (session_id, i, d.get("nom", ""), d.get("modern", ""), d.get("accuracy", ""))
+            "INSERT INTO ocr_boxes "
+            "(session_id, box_index, nom_ocr, hanviet, accuracy, points, bbox_h, bbox_w) "
+            "VALUES (?,?,?,?,?,?,?,?)",
+            (session_id, i, d.get("nom", ""), d.get("modern", ""), d.get("accuracy", ""),
+             d.get("points", ""), d.get("height", ""), d.get("width", ""))
         )
     conn.commit()
     conn.close()
@@ -263,18 +314,21 @@ def get_boxes(session_id) -> dict:
     if _USE_CLOUD:
         res = (
             _supa.table("ocr_boxes")
-            .select("box_index, nom_ocr, nom_corrected, hanviet, accuracy, saved")
+            .select("*")
             .eq("session_id", session_id)
             .order("box_index")
             .execute()
         )
         return {
             r["box_index"]: {
-                "nom_ocr":       r["nom_ocr"],
-                "nom_corrected": r["nom_corrected"],
-                "hanviet":       r["hanviet"],
-                "accuracy":      r["accuracy"],
-                "saved":         bool(r["saved"]),
+                "nom_ocr":       r.get("nom_ocr", ""),
+                "nom_corrected": r.get("nom_corrected"),
+                "hanviet":       r.get("hanviet", ""),
+                "accuracy":      r.get("accuracy", ""),
+                "saved":         bool(r.get("saved", False)),
+                "points":        r.get("points", "") or "",
+                "height":        r.get("bbox_h", "") or "",
+                "width":         r.get("bbox_w", "") or "",
             }
             for r in res.data
         }
@@ -282,7 +336,8 @@ def get_boxes(session_id) -> dict:
     # SQLite
     conn = _conn()
     cur = conn.execute(
-        "SELECT box_index, nom_ocr, nom_corrected, hanviet, accuracy, saved "
+        "SELECT box_index, nom_ocr, nom_corrected, hanviet, accuracy, saved, "
+        "COALESCE(points,''), COALESCE(bbox_h,''), COALESCE(bbox_w,'') "
         "FROM ocr_boxes WHERE session_id=? ORDER BY box_index",
         (session_id,)
     )
@@ -290,7 +345,8 @@ def get_boxes(session_id) -> dict:
     for row in cur.fetchall():
         result[row[0]] = {
             "nom_ocr": row[1], "nom_corrected": row[2],
-            "hanviet": row[3], "accuracy": row[4], "saved": bool(row[5])
+            "hanviet": row[3], "accuracy": row[4], "saved": bool(row[5]),
+            "points": row[6], "height": row[7], "width": row[8],
         }
     conn.close()
     return result
@@ -397,7 +453,7 @@ def get_session_boxes(session_id) -> list:
     if _USE_CLOUD:
         res = (
             _supa.table("ocr_boxes")
-            .select("box_index, nom_ocr, nom_corrected, hanviet, accuracy, saved, updated_at")
+            .select("*")
             .eq("session_id", session_id)
             .order("box_index")
             .execute()
@@ -405,12 +461,15 @@ def get_session_boxes(session_id) -> list:
         return [
             {
                 "box_index":     r["box_index"],
-                "nom_ocr":       r["nom_ocr"],
-                "nom_corrected": r["nom_corrected"],
-                "hanviet":       r["hanviet"],
-                "accuracy":      r["accuracy"],
-                "saved":         bool(r["saved"]),
-                "updated_at":    r["updated_at"] or "",
+                "nom_ocr":       r.get("nom_ocr", ""),
+                "nom_corrected": r.get("nom_corrected"),
+                "hanviet":       r.get("hanviet", ""),
+                "accuracy":      r.get("accuracy", ""),
+                "saved":         bool(r.get("saved", False)),
+                "updated_at":    r.get("updated_at") or "",
+                "points":        r.get("points", "") or "",
+                "height":        r.get("bbox_h", "") or "",
+                "width":         r.get("bbox_w", "") or "",
             }
             for r in res.data
         ]
@@ -418,7 +477,8 @@ def get_session_boxes(session_id) -> list:
     # SQLite
     conn = _conn()
     cur = conn.execute(
-        "SELECT box_index, nom_ocr, nom_corrected, hanviet, accuracy, saved, updated_at "
+        "SELECT box_index, nom_ocr, nom_corrected, hanviet, accuracy, saved, updated_at, "
+        "COALESCE(points,''), COALESCE(bbox_h,''), COALESCE(bbox_w,'') "
         "FROM ocr_boxes WHERE session_id=? ORDER BY box_index",
         (session_id,)
     )
@@ -426,7 +486,8 @@ def get_session_boxes(session_id) -> list:
     conn.close()
     return [
         {"box_index": r[0], "nom_ocr": r[1], "nom_corrected": r[2],
-         "hanviet": r[3], "accuracy": r[4], "saved": bool(r[5]), "updated_at": r[6]}
+         "hanviet": r[3], "accuracy": r[4], "saved": bool(r[5]), "updated_at": r[6],
+         "points": r[7], "height": r[8], "width": r[9]}
         for r in rows
     ]
 

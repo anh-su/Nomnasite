@@ -180,6 +180,15 @@ def _user_list():
                 t = s.get('updated_at') or ''
                 if t > user_info[u]['lan_cuoi']:
                     user_info[u]['lan_cuoi'] = t
+            # Gộp thêm user đã đăng nhập nhưng chưa OCR
+            try:
+                logins = _supa_client.table("user_logins").select("username, last_login").execute().data
+                for row in logins:
+                    u = row['username']
+                    if u not in user_info:
+                        user_info[u] = {'phien': 0, 'da_luu': 0, 'lan_cuoi': row.get('last_login', '')}
+            except Exception:
+                pass
             return sorted(
                 [(u, d['phien'], d['da_luu'], d['lan_cuoi']) for u, d in user_info.items()],
                 key=lambda x: -x[1]
@@ -188,13 +197,14 @@ def _user_list():
             return []
     with _ocr_conn() as c:
         return c.execute("""
-            SELECT s.username,
-                   COUNT(DISTINCT s.id)   AS phien,
-                   SUM(b.saved)           AS da_luu,
-                   MAX(s.updated_at)      AS lan_cuoi
-            FROM ocr_sessions s
+            SELECT username,
+                   COUNT(DISTINCT s.id)          AS phien,
+                   COALESCE(SUM(b.saved), 0)     AS da_luu,
+                   MAX(COALESCE(s.updated_at, l.last_login)) AS lan_cuoi
+            FROM user_logins l
+            LEFT JOIN ocr_sessions s ON s.username = l.username
             LEFT JOIN ocr_boxes b ON b.session_id = s.id
-            GROUP BY s.username ORDER BY phien DESC
+            GROUP BY l.username ORDER BY phien DESC
         """).fetchall()
 
 
