@@ -104,10 +104,13 @@ def _font_face_css() -> str:
     css = ""
     for fname, family, urange in [
         ("NomNaTong.otf", "NomNaTong",
-         "U+F0000-U+FFFFF"),
+         # CJK chính (4E00-9FFF) + Extension A + Compatibility + Private Use (Nôm)
+         "U+4E00-9FFF,U+3400-4DBF,U+F900-FAFF,"
+         "U+2F00-2FDF,U+2E80-2EFF,U+F0000-U+FFFFF"),
         ("HanaMinA.otf",  "HanaMin",
-         "U+3400-4DBF,U+20000-2A6DF,U+2A700-2B73F,"
-         "U+2B740-2B81F,U+2B820-2CEAF,U+F900-FAFF,U+2F800-2FA1F"),
+         # Extension B–F cho ký tự hiếm không có trong NomNaTong
+         "U+20000-2A6DF,U+2A700-2B73F,"
+         "U+2B740-2B81F,U+2B820-2CEAF,U+2F800-2FA1F"),
     ]:
         p = Path(__file__).parent / "static" / fname
         if p.exists():
