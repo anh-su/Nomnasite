@@ -95,28 +95,29 @@ def _read_css(name: str) -> str:
 def _load_css(name: str) -> None:
     st.markdown(f"<style>{_read_css(name)}</style>", unsafe_allow_html=True)
 
+@st.cache_data(show_spinner=False)
 def _nom_font_b64() -> str:
-    # Font được load qua URL tĩnh trong component — không cần truyền base64
+    p = Path(__file__).parent / "static" / "NomNaTong.otf"
+    if p.exists():
+        return base64.b64encode(p.read_bytes()).decode()
     return ""
 
 @st.cache_data(show_spinner=False)
 def _font_face_css() -> str:
     css = ""
-    for fname, family, urange in [
-        ("NomNaTong.otf", "NomNaTong",
-         # CJK chính (4E00-9FFF) + Extension A + Compatibility + Private Use (Nôm)
-         "U+4E00-9FFF,U+3400-4DBF,U+F900-FAFF,"
-         "U+2F00-2FDF,U+2E80-2EFF,U+F0000-U+FFFFF"),
-        ("HanaMinA.otf",  "HanaMin",
-         # Extension B–F cho ký tự hiếm không có trong NomNaTong
-         "U+20000-2A6DF,U+2A700-2B73F,"
-         "U+2B740-2B81F,U+2B820-2CEAF,U+2F800-2FA1F"),
-    ]:
-        p = Path(__file__).parent / "static" / fname
-        if p.exists():
-            css += (f"@font-face{{font-family:'{family}';"
-                    f"src:url('/app/static/{fname}') format('opentype');"
-                    f"unicode-range:{urange};}}")
+    b64 = _nom_font_b64()
+    nom_src = (f"url('data:font/opentype;base64,{b64}') format('opentype')"
+               if b64 else "url('/app/static/NomNaTong.otf') format('opentype')")
+    nom_range = ("U+4E00-9FFF,U+3400-4DBF,U+F900-FAFF,"
+                 "U+2F00-2FDF,U+2E80-2EFF,U+F0000-U+FFFFF")
+    css += f"@font-face{{font-family:'NomNaTong';src:{nom_src};unicode-range:{nom_range};}}"
+    p = Path(__file__).parent / "static" / "HanaMinA.otf"
+    if p.exists():
+        hana_range = ("U+20000-2A6DF,U+2A700-2B73F,"
+                      "U+2B740-2B81F,U+2B820-2CEAF,U+2F800-2FA1F")
+        css += (f"@font-face{{font-family:'HanaMin';"
+                f"src:url('/app/static/HanaMinA.otf') format('opentype');"
+                f"unicode-range:{hana_range};}}")
     return css
 
 st.markdown(f"<style>{_font_face_css()}</style>", unsafe_allow_html=True)

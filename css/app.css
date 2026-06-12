@@ -1,6 +1,8 @@
-body, .stMarkdown, p, span, td, th, .stExpander {
+body, .stMarkdown, p, span, td, th, .stExpander,
+div[data-testid="stTextInput"] input,
+div[data-testid="stTextArea"] textarea {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
-                 'Noto Sans CJK SC', 'NomNaTong', sans-serif, 'HanaMin';
+                 'NomNaTong', 'Noto Sans CJK SC', sans-serif, 'HanaMin';
 }
 
 /* ===== USER BOX ===== */
