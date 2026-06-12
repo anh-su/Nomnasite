@@ -19,26 +19,3 @@ def bg_css() -> str:
 </style>"""
     except Exception:
         return ""
-
-
-custom_css = '''
-    <style>
-        .block-container > div >
-        [data-testid="stVerticalBlock"] >
-        [data-testid="stHorizontalBlock"] >
-        [data-testid="column"]:nth-of-type(1) {
-            border: 1px solid rgba(49, 51, 63, 0.2);
-            border-radius: 0.25rem;
-            padding: calc(1em - 1px);
-        }
-        button:disabled, button:disabled:hover, button:disabled:active {
-            border-color: transparent!important;
-            color: unset!important;
-            cursor: auto!important;
-            padding-left: 0px;
-        }
-        thead {
-            display: none;
-        }
-    </style>
-'''

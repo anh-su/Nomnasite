@@ -21,3 +21,10 @@ button[kind="primary"] {
     color: #262660 !important;
     transform: translateY(-1px);
 }
+
+.hr-divider {
+    border: none;
+    height: 1px;
+    background: #ddd;
+    margin: 0px 0 8px 0;
+}

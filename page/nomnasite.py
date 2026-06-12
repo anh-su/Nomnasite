@@ -24,7 +24,6 @@ from handler.translator import db_hanviet, db_meaning, hvdic_render
 from services import ocr_session as _ocr_svc
 _ocr_svc.create_tables()
 from toolbar import render_toolbar
-from style import custom_css
 
 
 _CSS_FILE  = Path(__file__).parent.parent / "css" / "nomnasite.css"
@@ -258,7 +257,6 @@ def _ai_find_doc_url(ten: str) -> str | None:
 
 
 def show():
-    st.markdown(custom_css, unsafe_allow_html=True)
     st.markdown(f"<style>{_CSS_FILE.read_text(encoding='utf-8')}</style>", unsafe_allow_html=True)
     st.markdown(f"""<style>
 [data-testid="stAppViewContainer"] {{
@@ -288,6 +286,12 @@ def show():
                     if _dl:
                         image_path = _dl
                         st.session_state[f'img_path_{_rkey}'] = _dl
+                # Thử tìm file ảnh trực tiếp trên đĩa (sau server restart)
+                if not image_path:
+                    _local_try = str(Path(__file__).parent.parent / 'imgs' / f'{_rkey}.jpg')
+                    if os.path.exists(_local_try):
+                        image_path = _local_try
+                        st.session_state[f'img_path_{_rkey}'] = _local_try
 
         if not image_path or not os.path.exists(image_path):
             st.info('Vui lòng tải ảnh lên hoặc nhập URL ảnh.')
@@ -300,8 +304,11 @@ def show():
             st.session_state.pop('resume_image_key', None)
             return
         raw_image = cv2.cvtColor(_img_arr, cv2.COLOR_BGR2RGB)
-        _js_width = st_javascript('await fetch(window.location.href).then(response => window.innerWidth)')
-        _col1_w = int(_js_width) if isinstance(_js_width, (int, float)) and _js_width > 100 else 700
+        if 'window_width' not in st.session_state:
+            _js_width = st_javascript('window.innerWidth')
+            if isinstance(_js_width, (int, float)) and _js_width > 100:
+                st.session_state['window_width'] = int(_js_width)
+        _col1_w = st.session_state.get('window_width', 700)
         _img_w, _img_h = raw_image.shape[1], raw_image.shape[0]
         if _img_w <= _col1_w:
             canvas_width  = _img_w
@@ -346,6 +353,33 @@ def show():
             _existing_sess = _ocr_svc.find_session(st.session_state["username"], key)
             if _existing_sess:
                 st.session_state[f'sess_{key}'] = _existing_sess
+
+        # Khôi phục OCR data từ DB khi resume và session_state bị mất (server restart / tab mới)
+        _r_sess = st.session_state.get(f'sess_{key}')
+        if (_r_sess
+                and st.session_state.get('resume_image_key') == key
+                and st.session_state.get('ocr_image_key') != key):
+            try:
+                _db_bxs = _ocr_svc.get_boxes(_r_sess)
+                if _db_bxs and all(_db_bxs[i].get('points') for i in sorted(_db_bxs.keys())):
+                    _rd, _rb = [], []
+                    for _bi in sorted(_db_bxs.keys()):
+                        _bd = _db_bxs[_bi]
+                        _rd.append({
+                            'nom':      _bd.get('nom_corrected') or _bd.get('nom_ocr') or '',
+                            'modern':   _bd.get('hanviet', ''),
+                            'accuracy': _bd.get('accuracy') or '0%',
+                            'points':   _bd.get('points', ''),
+                            'height':   _bd.get('height', '0'),
+                            'width':    _bd.get('width', '0'),
+                        })
+                        _coords = list(map(float, _bd['points'].split(',')))
+                        _rb.append(_np.array(_coords, dtype=_np.float32).reshape(4, 2))
+                    st.session_state['ocr_data']      = _rd
+                    st.session_state['ocr_boxes']     = _rb
+                    st.session_state['ocr_image_key'] = key
+            except Exception:
+                pass
 
         mode, rec_clicked = render_toolbar(key)
 
@@ -500,6 +534,28 @@ def show():
                     <b>Phiên âm</b> [hvdic](https://hvdic.thivien.net/transcript.php#trans): {hvdic_render(d["nom"])}<br/>
                     <b>Dịch nghĩa:</b> {db_meaning(d["nom"])}
                 ''', unsafe_allow_html=True)
+
+            # Nút lưu tất cả corrections — cuối col2, sau tất cả các expander
+            if _sess_id and "username" in st.session_state:
+                _all_ocr_data = st.session_state.get('ocr_data', [])
+                _all_saved_key = f"ocr_all_saved_{key}"
+                _already_all = st.session_state.get(_all_saved_key, False)
+                _btn_lbl = "✅ Đã lưu tất cả" if _already_all else "💾 Lưu tất cả"
+                if st.button(_btn_lbl, key=f"save_all_corr_{key}", disabled=_already_all):
+                    _ocr_boxes = st.session_state.get('ocr_boxes', [])
+                    for _i, _d in enumerate(_all_ocr_data):
+                        _corr_val = st.session_state.get(f'corr_{_sess_id}_{_i}', _d['nom'])
+                        _ocr_svc.save_correction(_sess_id, _i, _corr_val)
+                        try:
+                            if _i < len(_ocr_boxes):
+                                _patch_i = get_patch(raw_image, _ocr_boxes[_i])
+                                _conf_i = float(_d.get('accuracy', '0%').rstrip('%'))
+                                from services.dataset_service import save_patch_from_correction
+                                save_patch_from_correction(_patch_i, _d['nom'], _corr_val, _conf_i / 100.0)
+                        except Exception:
+                            pass
+                    st.session_state[_all_saved_key] = True
+                    st.experimental_rerun()
 
             # Chặn Streamlit auto-scroll col2 sau khi render xong, về lại đầu
             components.html("""

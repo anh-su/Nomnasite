@@ -4,6 +4,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import altair as alt
 import pandas as pd
 import streamlit as st
 from dotenv import load_dotenv
@@ -12,6 +13,8 @@ from services.ocr_session import _USE_CLOUD, _supa as _supa_client
 from style import bg_css
 
 load_dotenv(Path(__file__).parent.parent / ".env", override=True)
+
+
 
 _DB = "database/dictionary.db"
 _DICT_DB = _DB
@@ -326,11 +329,26 @@ def _approve_item(filename: str, label: str) -> bool:
 
 
 def _reject_item(filename: str) -> bool:
+    import shutil
     src_img = os.path.join("ai/datasets/pending/images", filename)
+    dst_img = os.path.join("ai/datasets/rejected/images", filename)
+    rej_lbl = "ai/datasets/rejected/labels.txt"
+    pnd_lbl = "ai/datasets/pending/labels.txt"
     try:
-        _remove_from_pending_labels(filename)
+        # Lấy label trước khi xóa khỏi pending
+        label = ""
+        if os.path.exists(pnd_lbl):
+            for line in open(pnd_lbl, encoding="utf-8"):
+                if line.startswith(filename + "|"):
+                    label = line.split("|", 1)[1].strip()
+                    break
+
+        os.makedirs("ai/datasets/rejected/images", exist_ok=True)
         if os.path.exists(src_img):
-            os.remove(src_img)
+            shutil.move(src_img, dst_img)
+        with open(rej_lbl, "a", encoding="utf-8") as f:
+            f.write(f"{filename}|{label}\n")
+        _remove_from_pending_labels(filename)
         return True
     except Exception:
         return False
@@ -355,7 +373,23 @@ def _render_dashboard(stats):
         act = _activity_7d()
         if act:
             df = pd.DataFrame(act, columns=['Ngày', 'Phiên'])
-            st.bar_chart(df.set_index('Ngày'), height=220)
+            _ymax = max(int(df['Phiên'].max()), 10)
+            _c = (
+                alt.Chart(df)
+                .mark_bar()
+                .encode(
+                    x=alt.X('Ngày:T', title=None),
+                    y=alt.Y('Phiên:Q', title='Phiên',
+                            scale=alt.Scale(domain=[0, _ymax]),
+                            axis=alt.Axis(format='d', labelOverlap=False,
+                                          values=list(range(0, _ymax + 1)))),
+                    tooltip=['Ngày:T', 'Phiên:Q'],
+                )
+                .properties(height=440)
+                .configure_legend(labelFontSize=10, titleFontSize=10)
+                .configure_axis(labelFontSize=11)
+            )
+            st.altair_chart(_c, use_container_width=True)
         else:
             st.caption("Chưa có dữ liệu.")
 
@@ -364,7 +398,13 @@ def _render_dashboard(stats):
         docs = _top_docs(8)
         if docs:
             df2 = pd.DataFrame(docs, columns=['Tài liệu', 'Phiên'])
-            st.dataframe(df2.reset_index(drop=True), use_container_width=True, height=230)
+            df2.index = range(1, len(df2) + 1)
+            df2.index.name = 'STT'
+            st.dataframe(
+                df2.style.set_properties(**{'text-align': 'center'})
+                         .set_table_styles([{'selector': 'th', 'props': [('text-align', 'center')]}]),
+                use_container_width=True, height=230,
+            )
         else:
             st.caption("Chưa có dữ liệu.")
 
@@ -395,7 +435,13 @@ def _render_stats(stats):
                 'Khoảng': list(dist.keys()),
                 'Ký tự': list(dist.values()),
             })
-            st.dataframe(df_d.reset_index(drop=True), use_container_width=True)
+            df_d.index = range(1, len(df_d) + 1)
+            df_d.index.name = 'STT'
+            st.dataframe(
+                df_d.style.set_properties(**{'text-align': 'center'})
+                          .set_table_styles([{'selector': 'th', 'props': [('text-align', 'center')]}]),
+                use_container_width=True,
+            )
         else:
             st.caption("Chưa có dữ liệu accuracy.")
 
@@ -404,7 +450,13 @@ def _render_stats(stats):
     users = _user_list()
     if users:
         df_u = pd.DataFrame(users, columns=['Username', 'Phiên OCR', 'Boxes đã lưu', 'Lần cuối'])
-        st.dataframe(df_u.reset_index(drop=True), use_container_width=True)
+        df_u.index = range(1, len(df_u) + 1)
+        df_u.index.name = 'STT'
+        st.dataframe(
+            df_u.style.set_properties(**{'text-align': 'center'})
+                      .set_table_styles([{'selector': 'th', 'props': [('text-align', 'center')]}]),
+            use_container_width=True,
+        )
     else:
         st.info("Chưa có dữ liệu.")
 
@@ -423,7 +475,13 @@ def _render_dictionary():
         if rows:
             st.caption(f"Hiển thị {len(rows)} kết quả (tối đa 60)")
             df = pd.DataFrame(rows, columns=['ID', 'Quốc ngữ', 'Hán Nôm', 'Hán Việt', 'Nghĩa'])
-            st.dataframe(df.reset_index(drop=True), use_container_width=True, height=300)
+            df.index = range(1, len(df) + 1)
+            df.index.name = 'STT'
+            st.dataframe(
+                df.style.set_properties(**{'text-align': 'center'})
+                        .set_table_styles([{'selector': 'th', 'props': [('text-align', 'center')]}]),
+                use_container_width=True, height=300,
+            )
             c_del, _ = st.columns([1, 3])
             rid = c_del.number_input("Xóa theo ID", min_value=0, value=0, step=1, key="adm_del_t")
             if st.button("🗑️ Xóa", key="adm_del_t_btn"):
@@ -485,7 +543,13 @@ def _render_dictionary():
         if rows:
             st.caption(f"Hiển thị {len(rows)} kết quả (tối đa 60)")
             df = pd.DataFrame(rows, columns=['ID', 'Hán Nôm', 'Phiên âm', 'Nghĩa tiếng Việt'])
-            st.dataframe(df.reset_index(drop=True), use_container_width=True, height=300)
+            df.index = range(1, len(df) + 1)
+            df.index.name = 'STT'
+            st.dataframe(
+                df.style.set_properties(**{'text-align': 'center'})
+                        .set_table_styles([{'selector': 'th', 'props': [('text-align', 'center')]}]),
+                use_container_width=True, height=300,
+            )
             c_del, _ = st.columns([1, 3])
             rid = c_del.number_input("Xóa theo ID", min_value=0, value=0, step=1, key="adm_del_ai")
             if st.button("🗑️ Xóa", key="adm_del_ai_btn"):
@@ -654,7 +718,12 @@ def _render_users():
             st.info("Không tìm thấy người dùng phù hợp.")
         else:
             df.insert(0, 'STT', range(1, len(df) + 1))
-            st.dataframe(df.set_index('STT'), use_container_width=True)
+            df = df.set_index('STT')
+            st.dataframe(
+                df.style.set_properties(**{'text-align': 'center'})
+                        .set_table_styles([{'selector': 'th', 'props': [('text-align', 'center')]}]),
+                use_container_width=True,
+            )
     else:
         st.info("Chưa có dữ liệu.")
 
@@ -699,18 +768,38 @@ def _render_performance():
 
     st.markdown("##### Phân bố độ chính xác CRNN")
     df_d = pd.DataFrame({'Khoảng': list(dist.keys()), 'Số ký tự': list(dist.values())})
-    st.bar_chart(df_d.set_index('Khoảng'), height=250)
+    _bar = (
+        alt.Chart(df_d)
+        .mark_bar()
+        .encode(
+            x=alt.X('Khoảng:N', sort=None, title='Khoảng'),
+            y=alt.Y('Số ký tự:Q', scale=alt.Scale(domainMin=0), title='Số ký tự'),
+            tooltip=['Khoảng:N', 'Số ký tự:Q'],
+        )
+        .properties(height=500)
+        .configure_legend(labelFontSize=10, titleFontSize=10)
+        .configure_axis(labelFontSize=11)
+    )
+    st.altair_chart(_bar, use_container_width=True)
 
     trend = _accuracy_trend()
     if len(trend) > 1:
         st.markdown("##### Xu hướng độ chính xác theo ngày")
         df_t = pd.DataFrame(trend, columns=['Ngày', 'Accuracy (%)'])
-        st.line_chart(df_t.set_index('Ngày'), height=220)
+        _line = (
+            alt.Chart(df_t)
+            .mark_line(point=True)
+            .encode(
+                x=alt.X('Ngày:T', title='Ngày'),
+                y=alt.Y('Accuracy (%):Q', scale=alt.Scale(domainMin=0), title='Accuracy (%)'),
+                tooltip=['Ngày:T', 'Accuracy (%):Q'],
+            )
+            .properties(height=440)
+            .configure_legend(labelFontSize=10, titleFontSize=10)
+            .configure_axis(labelFontSize=11)
+        )
+        st.altair_chart(_line, use_container_width=True)
 
-    vocab = assets / "vocab.txt"
-    if vocab.exists():
-        n = len(vocab.read_text(encoding='utf-8').splitlines())
-        st.caption(f"Vocabulary CRNN: **{n:,} ký tự**")
 
 
 def _render_training():

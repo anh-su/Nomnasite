@@ -76,7 +76,17 @@ _init_db_once()
 
 from services.translation_log import create_table as _create_log_table, save_entry, get_entries, get_entry_by_id, sync_from_local, delete_entry, toggle_star
 _create_log_table()
-from page import admin as admin_page          # cần sớm để check _is_admin() trong sidebar
+
+import importlib
+
+def _admin_module():
+    return importlib.import_module("page.admin")
+
+def _admin_is_allowed() -> bool:
+    try:
+        return _admin_module()._is_admin()
+    except Exception:
+        return False
 
 @st.cache_data(show_spinner=False)
 def _read_css(name: str) -> str:
@@ -85,15 +95,12 @@ def _read_css(name: str) -> str:
 def _load_css(name: str) -> None:
     st.markdown(f"<style>{_read_css(name)}</style>", unsafe_allow_html=True)
 
-@st.cache_data(show_spinner=False)
 def _nom_font_b64() -> str:
-    """Base64 của NomNaTong.otf — dùng cho cả CSS inline lẫn component prop."""
-    p = Path(__file__).parent / "static" / "NomNaTong.otf"
-    return base64.b64encode(p.read_bytes()).decode() if p.exists() else ""
+    # Font được load qua URL tĩnh trong component — không cần truyền base64
+    return ""
 
 @st.cache_data(show_spinner=False)
 def _font_face_css() -> str:
-    """Embed cả NomNaTong + HanaMinA dưới dạng base64 để hiện ký tự ngay lập tức."""
     css = ""
     for fname, family, urange in [
         ("NomNaTong.otf", "NomNaTong",
@@ -104,9 +111,8 @@ def _font_face_css() -> str:
     ]:
         p = Path(__file__).parent / "static" / fname
         if p.exists():
-            b64 = base64.b64encode(p.read_bytes()).decode()
             css += (f"@font-face{{font-family:'{family}';"
-                    f"src:url('data:font/opentype;base64,{b64}') format('opentype');"
+                    f"src:url('/app/static/{fname}') format('opentype');"
                     f"unicode-range:{urange};}}")
     return css
 
@@ -118,9 +124,14 @@ _load_css("app.css")
 # RESTORE LOGIN KHI RELOAD
 params = st.experimental_get_query_params()
 page   = params.get("page", ["home"])[0]
+_just_logged_out = st.session_state.pop("_just_logged_out", False)
+
+# Init cờ restore
+if "auth_restored" not in st.session_state:
+    st.session_state.auth_restored = False
 
 # Nếu đang có user/name trên URL (link cũ) → dọn sạch, chuyển vào session_state
-if params.get("user") or params.get("name"):
+if not _just_logged_out and (params.get("user") or params.get("name")):
     _u = params.get("user", [None])[0]
     _n = params.get("name", [None])[0]
     if _u:
@@ -130,19 +141,27 @@ if params.get("user") or params.get("name"):
     st.experimental_rerun()
 
 # Restore session từ localStorage (giữ login sau khi server restart)
-if "user" not in st.session_state:
+if not _just_logged_out and "user" not in st.session_state and not st.session_state.auth_restored:
     _stored = st_javascript(
         "JSON.stringify({u:localStorage.getItem('nom_u'),n:localStorage.getItem('nom_n'),r:localStorage.getItem('nom_r')})"
     )
+
     if isinstance(_stored, str):
         try:
             _d = json.loads(_stored)
+
             if _d.get("u"):
-                st.session_state["user"]     = _d["u"]
+                st.session_state["user"] = _d["u"]
                 st.session_state["username"] = _d.get("n") or _d["u"].split("@")[0]
-                st.session_state["role"]     = _d.get("r", "user")
+                st.session_state["role"] = _d.get("r", "user")
+
         except Exception:
             pass
+
+        st.session_state.auth_restored = True
+
+    else:
+        st.stop()
 
 user = st.session_state.get("user")
 name = st.session_state.get("username")
@@ -190,7 +209,6 @@ if _load_inp:
     st.experimental_rerun()
 
 # restore session — bỏ qua nếu vừa đăng xuất (URL params chưa cleared kịp)
-_just_logged_out = st.session_state.pop("_just_logged_out", False)
 if user and name and not _just_logged_out:
     st.session_state["user"]     = user
     st.session_state["username"] = name
@@ -199,13 +217,16 @@ if user and name and not _just_logged_out:
         _admin_list = [e.strip() for e in os.getenv("ADMIN_EMAILS", "").split(",") if e.strip()]
         st.session_state["role"] = "admin" if user in _admin_list else "user"
     # Cho phép vào trang admin nếu role đã được xác nhận là admin
-    restored_page = page if page != "admin" or st.session_state.get("role") == "admin" else "home"
-    st.session_state["page"]     = restored_page
-        
-    
+    # Ưu tiên session_state["page"] (được set bởi login/nav) hơn URL param.
+    # URL param chỉ dùng làm fallback khi session_state chưa có page (VD: server restart).
+    _restored = st.session_state.get("page") or page
+    if _restored == "admin" and st.session_state.get("role") != "admin":
+        _restored = "home"
+    st.session_state["page"] = _restored
+
+
 # ===== USER HEADER =====
 if "username" in st.session_state:
-
     st.markdown(
         f'<div class="user-box">👤 {st.session_state["username"]}</div>',
         unsafe_allow_html=True
@@ -216,17 +237,7 @@ if "username" in st.session_state:
 with st.sidebar:
 
     # LINK HOME
-    if "username" in st.session_state:
-
-        home_link = (
-            f'/?user={st.session_state["user"]}'
-            f'&name={st.session_state["username"]}'
-            f'&page=home'
-        )
-
-    else:
-
-        home_link = "/?page=home"
+    home_link = "/?page=home"
 
     st.markdown(
         f"""
@@ -257,10 +268,7 @@ def _nav(key, label, page_key=None):
     target = page_key or key
     if st.button(label, key=f"nav_{key}"):
         st.session_state["page"] = target
-        if "username" in st.session_state:
-            st.experimental_set_query_params(page=target)
-        else:
-            st.experimental_set_query_params(page=target)
+        st.experimental_set_query_params(page=target)
         st.experimental_rerun()
 
 
@@ -269,7 +277,7 @@ _logged_in = "username" in st.session_state
 with st.sidebar:
 
     # 1. Quản trị viên (admin only)
-    if _logged_in and admin_page._is_admin():
+    if _logged_in and _admin_is_allowed():
         _nav("admin", "🛡️ Quản trị viên")
 
     # 2. Trang chủ
@@ -295,11 +303,11 @@ with st.sidebar:
     # 9. Đăng xuất / Đăng nhập
     if _logged_in:
         if st.button("🚪 Đăng xuất", key="nav_logout"):
-            st_javascript("localStorage.removeItem('nom_u');localStorage.removeItem('nom_n');localStorage.removeItem('nom_r');0")
             st.session_state.clear()
-            st.session_state["app_initialized"] = True
             st.session_state["page"] = "login"
             st.session_state["_just_logged_out"] = True
+            st.session_state["auth_restored"] = True   # chặn restore từ localStorage sau logout
+            st.session_state["_clear_local_storage"] = True
             st.experimental_set_query_params()
             st.experimental_rerun()
     else:
@@ -307,6 +315,15 @@ with st.sidebar:
         
 # PAGE
 page = st.session_state.get("page", "home")
+
+# Xóa localStorage sau khi đăng xuất (chạy ở render đầu tiên sau logout)
+if st.session_state.pop("_clear_local_storage", False):
+    components.html(
+        "<script>localStorage.removeItem('nom_u');"
+        "localStorage.removeItem('nom_n');"
+        "localStorage.removeItem('nom_r');</script>",
+        height=0
+    )
 
 # BACKGROUND — áp dụng cho mọi trang
 st.markdown(bg_css(), unsafe_allow_html=True)
@@ -411,7 +428,7 @@ if page == "home":
         if new_text is not None and new_text != old_text:
             st.session_state["input_han_nom"] = new_text
             handle_translate()
-            st.experimental_rerun()
+          
         text_input = st.session_state.get("input_han_nom", "")
 
     with col2:
@@ -594,25 +611,7 @@ function doSave(){{
                 f"&name={_urlparse.quote(str(st.session_state['username']))}"
                 f"&page=home"
             )
-            st.markdown("""
-<style>
-.jentry-wrap{display:flex;align-items:center;background:white;border-radius:10px;
-  box-shadow:0 1px 6px rgba(38,38,96,0.08);padding:10px 14px;margin-bottom:8px;
-  gap:10px;font-size:13px;font-family:sans-serif;transition:background .15s,box-shadow .15s;}
-.jentry-wrap:hover{background:#f0f4ff;box-shadow:0 2px 10px rgba(38,38,96,0.13);}
-.jentry-main{display:flex;flex:1;align-items:center;gap:10px;min-width:0;overflow:hidden;}
-.jentry-inp{color:#262660;font-weight:600;flex:1;overflow:hidden;
-  white-space:nowrap;text-overflow:ellipsis;min-width:0;}
-.jentry-out{color:#444;flex:1;overflow:hidden;white-space:nowrap;
-  text-overflow:ellipsis;min-width:0;}
-.jentry-arrow{color:#f69322;font-size:16px;flex-shrink:0;}
-.jentry-acts{display:flex;gap:4px;flex-shrink:0;align-items:center;}
-.jbtn-a{border:1px solid #eee!important;background:white!important;font-size:14px;
-  padding:3px 7px;border-radius:7px;line-height:1.5;color:#888!important;
-  transition:.15s;text-decoration:none!important;display:inline-block;}
-.jbtn-a:hover{background:#f5f5f5!important;border-color:#ccc!important;color:#262660!important;}
-</style>
-""", unsafe_allow_html=True)
+            _rows = []
             for _je in entries:
                 _id       = _je["id"]
                 _inp_raw  = _je["input"] or ""
@@ -622,8 +621,7 @@ function doSave(){{
                 _star_ico = "⭐" if _je.get("starred") else "☆"
                 _star_href = f"?{_uq}&action=star&action_id={_id}"
                 _del_href  = f"?{_uq}&action=del&action_id={_id}"
-                st.markdown(f"""
-<div class="jentry-wrap">
+                _rows.append(f"""<div class="jentry-wrap">
   <div class="jentry-main">
     <span class="jentry-inp">{_inp_disp}</span>
     <span class="jentry-arrow">→</span>
@@ -633,7 +631,8 @@ function doSave(){{
     <a href="{_star_href}" target="_self" class="jbtn-a" title="Lưu lại">{_star_ico}</a>
     <a href="{_del_href}" target="_self" class="jbtn-a" title="Xóa">🗑️</a>
   </div>
-</div>""", unsafe_allow_html=True)
+</div>""")
+            st.markdown("\n".join(_rows), unsafe_allow_html=True)
     else:
         # Hiển thị từ localStorage qua JS component
         components.html("""
@@ -793,6 +792,6 @@ elif page == "history":
     history.show()
 
 elif page == "admin":
-    admin_page.show()
+    _admin_module().show()
 
 # BOX END

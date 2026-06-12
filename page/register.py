@@ -37,14 +37,7 @@ def show():
     
     
     st.markdown('<div class="title">Tạo tài khoản</div>', unsafe_allow_html=True)
-    st.markdown("""
-<hr style="
-    border: none;
-    height: 1px;
-    background: #ddd;
-    margin: 0px 0 8px 0;
-">
-""", unsafe_allow_html=True)
+    st.markdown('<hr class="hr-divider">', unsafe_allow_html=True)
 
     # ===== INPUT =====
     email = st.text_input("Email", key="reg_email")
