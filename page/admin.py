@@ -68,11 +68,18 @@ def _get_stats() -> dict:
             s['today_sess'] = c.execute(
                 "SELECT COUNT(*) FROM ocr_sessions WHERE DATE(created_at)=DATE('now')"
             ).fetchone()[0]
-    with _ocr_conn() as c:
-        s['logs'] = c.execute("SELECT COUNT(*) FROM translation_log").fetchone()[0] if _tbl(c, 'translation_log') else 0
+    from services.translation_log import count_all as _log_count_all
+    s['logs'] = _log_count_all()
     with _dict_conn() as c:
         s['dict_main'] = c.execute("SELECT COUNT(*) FROM translations").fetchone()[0]
-        s['dict_ai']   = c.execute("SELECT COUNT(*) FROM ai_translations").fetchone()[0]
+        try:
+            if _USE_CLOUD and _supa_client:
+                res = _supa_client.table("ai_translations").select("id", count="exact").execute()
+                s['dict_ai'] = res.count or 0
+            else:
+                s['dict_ai'] = c.execute("SELECT COUNT(*) FROM ai_translations").fetchone()[0]
+        except Exception:
+            s['dict_ai'] = 0
     return s
 
 
