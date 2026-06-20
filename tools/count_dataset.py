@@ -60,3 +60,37 @@ print('-' * 100)
 print('{:<38} {:>10} {:>13}'.format('TONG CONG', total_patches, digit_patches))
 pct = digit_patches / total_patches * 100 if total_patches else 0
 print('Ty le patch co ky tu so: {:.2f}%'.format(pct))
+
+# Count missing labels
+print()
+print('=== PATCH THIEU NHAN ===')
+total_imgs = 0
+missing_all = []
+for book in sorted(os.listdir(patches_root)):
+    book_path = os.path.join(patches_root, book)
+    if not os.path.isdir(book_path):
+        continue
+    imgs = [f for f in os.listdir(book_path) if f.lower().endswith(('.jpg', '.png', '.jpeg'))]
+    total_imgs += len(imgs)
+    labels_file = os.path.join(book_path, 'labels.txt')
+    labeled = set()
+    if os.path.isfile(labels_file):
+        with open(labels_file, encoding='utf-8') as f:
+            for line in f:
+                parts = line.strip().split('|')
+                if len(parts) >= 2:
+                    labeled.add(parts[0])
+    missing = [f for f in imgs if f not in labeled]
+    if missing:
+        for m in missing:
+            missing_all.append((book, m))
+        print('  {} ({} patch thieu):'.format(book, len(missing)))
+        for m in missing:
+            print('    -', m)
+
+if not missing_all:
+    print('  Khong co patch nao thieu nhan.')
+print()
+print('Tong anh patch thuc te : {}'.format(total_imgs))
+print('Tong patch co nhan     : {}'.format(total_patches))
+print('Tong patch thieu nhan  : {}'.format(len(missing_all)))

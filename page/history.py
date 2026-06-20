@@ -160,21 +160,6 @@ def _apply_filter(sessions: list, f: str) -> list:
 
 
 def _render_ocr_sessions(username):
-    # Xử lý pending resume TRƯỚC khi render expanders
-    _pending = st.session_state.pop('_resume_pending', None)
-    if _pending:
-        st.session_state['page'] = 'nomnasite'
-        st.session_state['resume_image_key'] = _pending['image_key']
-        if _pending.get('user') and _pending.get('name'):
-            st.experimental_set_query_params(
-                user=_pending['user'],
-                name=_pending['name'],
-                page='nomnasite',
-            )
-        else:
-            st.experimental_set_query_params(page='nomnasite')
-        st.experimental_rerun()
-
     sessions = _ocr_svc.get_sessions(username, limit=50)
 
     if not sessions:
@@ -306,11 +291,9 @@ def _render_ocr_sessions(username):
             _ac1, _ac_t, _ac_d, _ac_p, _ac2, _ac3 = st.columns([2.5, 1, 1, 1, 0.6, 0.6])
             with _ac1:
                 if st.button('🔄 Tiếp tục chỉnh sửa', key=f'resume_{_sid}', use_container_width=True):
-                    st.session_state['_resume_pending'] = {
-                        'image_key': sess.get('image_key', ''),
-                        'user': st.session_state.get('user', ''),
-                        'name': st.session_state.get('username', ''),
-                    }
+                    st.session_state['page'] = 'nomnasite'
+                    st.session_state['resume_image_key'] = sess.get('image_key', '')
+                    st.experimental_set_query_params(page='nomnasite')
                     st.experimental_rerun()
             with _ac_t:
                 if _has_exp:

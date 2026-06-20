@@ -647,21 +647,23 @@ def _render_users():
 
     st.markdown("---")
     st.markdown("##### Phân quyền")
-    with st.form("f_set_role"):
-        r1, r2, r3 = st.columns([2, 1, 1])
-        target_email = r1.text_input("Email người dùng")
-        new_role     = r2.selectbox("Role", ["user", "admin"])
-        r3.markdown("<br>", unsafe_allow_html=True)
-        if r3.form_submit_button("✅ Gán"):
-            if target_email.strip():
+    _role_users = _user_list()
+    _role_emails = [u[0] for u in _role_users] if _role_users else []
+    if not _role_emails:
+        st.info("Chưa có người dùng nào trong hệ thống.")
+    else:
+        with st.form("f_set_role"):
+            r1, r2, r3 = st.columns([2, 1, 1])
+            target_email = r1.selectbox("Người dùng", _role_emails)
+            new_role     = r2.selectbox("Role", ["user", "admin"])
+            r3.markdown("<br>", unsafe_allow_html=True)
+            if r3.form_submit_button("✅ Gán"):
                 id_token = st.session_state.get("id_token", "")
                 try:
-                    set_role(target_email.strip(), new_role, id_token)
-                    st.success(f"Đã gán role **{new_role}** cho `{target_email.strip()}`")
+                    set_role(target_email, new_role, id_token)
+                    st.success(f"Đã gán role **{new_role}** cho `{target_email}`")
                 except Exception as e:
                     st.error(f"Lỗi: {e}")
-            else:
-                st.warning("Nhập email trước.")
 
     st.markdown("---")
     st.markdown("##### Khóa / Mở khóa / Xóa tài khoản")

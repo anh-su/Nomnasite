@@ -4,6 +4,7 @@ import regex
 DB_PATH = "database/dictionary.db"
 
 _translations_cache = None
+_vi_lookup_cache = None
 
 
 # =========================================
@@ -27,6 +28,13 @@ def _get_translations():
     return _translations_cache
 
 
+def _get_vi_lookup() -> dict:
+    global _vi_lookup_cache
+    if _vi_lookup_cache is None:
+        _vi_lookup_cache = {vi.lower(): hn for vi, hn in _get_translations()}
+    return _vi_lookup_cache
+
+
 # =========================================
 # VIỆT -> HÁN NÔM
 # =========================================
@@ -36,7 +44,7 @@ def translate_vi_to_hn(text):
     if not words:
         return ""
 
-    lookup = {vi.lower(): hn for vi, hn in _get_translations()}
+    lookup = _get_vi_lookup()
     result = []
     i = 0
     while i < len(words):
@@ -61,41 +69,22 @@ def translate_vi_to_hn(text):
 # =========================================
 
 def translate_hn_to_vi(text):
-
-    conn = get_connection()
-
-    cursor = conn.cursor()
-
     text = str(text)
+    chars = [c for c in text if c.strip()]
+    if not chars:
+        return ""
 
-    result = []
-
-    for char in text:
-
-        # bỏ mọi ký tự rác
-        if char.strip() == "":
-            continue
-
-        cursor.execute("""
-        SELECT vietnamese
-        FROM translations
-        WHERE han_nom = ?
-        """, (char,))
-
-        row = cursor.fetchone()
-
-        if row:
-
-            result.append(row[0])
-
-        else:
-
-            # giữ nguyên nếu chưa có DB
-            result.append(char)
-
+    placeholders = ",".join("?" * len(chars))
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        f"SELECT han_nom, vietnamese FROM translations WHERE han_nom IN ({placeholders})",
+        chars
+    )
+    lookup = {row[0]: row[1] for row in cursor.fetchall()}
     conn.close()
 
-    return " ".join(result)
+    return " ".join(lookup.get(c, c) for c in chars)
 
 
 # =========================================

@@ -1,0 +1,6 @@
+Character Accuracy : 86.14%
+CER : 13.86%
+Confidence : 74.80%
+Precision : 0.9301
+Recall : 0.9287
+F1-score : 0.9294

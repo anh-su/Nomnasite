@@ -201,7 +201,7 @@ def _phash_lookup(pil_image: Image.Image):
     return ten, page, nien_dai, src_url
 
 def _ai_identify_doc(nom_text: str):
-    """Dùng Groq để nhận diện tài liệu từ text OCR. Trả về (ten, nien_dai, nguon) hoặc None."""
+    """Dùng Groq để nhận diện tài liệu từ text OCR. Trả về (ten, nien_dai) hoặc None."""
     if not nom_text.strip():
         return None
     try:
@@ -215,11 +215,11 @@ def _ai_identify_doc(nom_text: str):
                     f'Đây là đoạn văn bản chữ Nôm/Hán Nôm:\n{sample}\n\n'
                     'Hãy xác định tác phẩm này thuộc về tài liệu nào. '
                     'Trả lời ĐÚNG định dạng JSON sau và không có gì thêm:\n'
-                    '{"ten":"...","nien_dai":"...","nguon":"..."}\n'
+                    '{"ten":"...","nien_dai":"..."}\n'
                     'Nếu không nhận ra thì để giá trị là chuỗi rỗng "".'
                 )
             }],
-            max_tokens=120,
+            max_tokens=80,
             temperature=0.1,
         )
         raw = resp.choices[0].message.content.strip()
@@ -229,10 +229,9 @@ def _ai_identify_doc(nom_text: str):
         data = json.loads(m.group())
         ten  = data.get('ten', '').strip()
         nd   = data.get('nien_dai', '').strip()
-        src  = data.get('nguon', '').strip()
         if not ten:
             return None
-        return ten, nd or 'Không xác định', src
+        return ten, nd or 'Không xác định'
     except Exception:
         return None
 
@@ -782,7 +781,8 @@ function dlFile(type){{
                 _ten, _trang, _nien_dai, _src_url = _phash_info
                 _dong = f'1 – {len(ocr_data)}'
             elif _ai_info:
-                _ten, _nien_dai, _src_url = _ai_info
+                _ten, _nien_dai = _ai_info
+                _src_url = ''
                 _trang = '?'
                 _dong = f'1 – {len(ocr_data)}'
             else:
