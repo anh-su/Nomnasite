@@ -161,12 +161,23 @@ def _lookup_doc_info(filename: str, url_input: str, n_boxes: int):
     return ten, page, dong, src_url, nien_dai
 
 
-_PAGES_DIR = Path(__file__).parent.parent / "data" / "archive" / "Pages"
+_PAGES_DIR   = Path(__file__).parent.parent / "data" / "archive" / "Pages"
+_PHASH_CACHE = Path(__file__).parent.parent / "data" / "phash_index.pkl"
 _PHASH_THRESHOLD = 10
 
 @st.cache_resource(show_spinner=False)
 def _build_phash_index():
-    """Build {phash: (basename, folder)} cho toàn bộ ảnh trong archive."""
+    """Build {phash: (basename, folder)} cho toàn bộ ảnh trong archive.
+    Lưu cache ra file để tránh rebuild 2000+ ảnh mỗi lần server restart."""
+    import pickle
+
+    if _PHASH_CACHE.exists():
+        try:
+            with open(_PHASH_CACHE, 'rb') as f:
+                return pickle.load(f)
+        except Exception:
+            pass
+
     idx = {}
     if not _PAGES_DIR.exists():
         return idx
@@ -177,6 +188,13 @@ def _build_phash_index():
             idx[h] = (img_path.name, folder)
         except Exception:
             pass
+
+    try:
+        with open(_PHASH_CACHE, 'wb') as f:
+            pickle.dump(idx, f)
+    except Exception:
+        pass
+
     return idx
 
 def _phash_lookup(pil_image: Image.Image):
