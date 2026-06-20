@@ -799,7 +799,8 @@ function dlFile(type){{
                 _ten, _trang, _nien_dai, _src_url = _phash_info
                 _dong = f'1 – {len(ocr_data)}'
             elif _ai_info:
-                _ten, _nien_dai = _ai_info
+                # guard: session cũ có thể lưu tuple 3 phần tử (ten, nien_dai, nguon)
+                _ten, _nien_dai = _ai_info[0], _ai_info[1]
                 _src_url = ''
                 _trang = '?'
                 _dong = f'1 – {len(ocr_data)}'
